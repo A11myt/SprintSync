@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const users = await db.user.findMany({
       orderBy: { createdAt: "asc" },
-      select:  { id: true, username: true, createdAt: true },
+      select:  { id: true, username: true, role: true, createdAt: true },
     });
     return NextResponse.json(users);
   } catch (err: any) {
@@ -39,12 +39,16 @@ export async function POST(req: NextRequest) {
       .pbkdf2Sync(password, salt, 100_000, 64, "sha512")
       .toString("hex");
 
+    // First user ever becomes admin
+    const count = await db.user.count();
+    const role  = count === 0 ? "admin" : "member";
+
     const user = await db.user.create({
-      data: { username, passwordHash: hash, passwordSalt: salt },
+      data: { username, passwordHash: hash, passwordSalt: salt, role },
     });
 
     return NextResponse.json(
-      { id: user.id, username: user.username },
+      { id: user.id, username: user.username, role: user.role },
       { status: 201 }
     );
   } catch (err: any) {

@@ -4,14 +4,7 @@ import crypto from "crypto";
 import { db } from "@/lib/db";
 import { authConfig } from "@/auth.config";
 
-// Extend session type to include user.id
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-    } & DefaultSession["user"];
-  }
-}
+// Session type is extended in auth.config.ts
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -39,7 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
 
         if (!match) return null;
-        return { id: user.id, name: user.username };
+        return { id: user.id, name: user.username, role: user.role };
       },
     }),
   ],

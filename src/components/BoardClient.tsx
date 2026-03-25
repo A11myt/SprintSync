@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import type { Task, Sprint, Epic } from "@/lib/data";
 
 interface Props {
@@ -104,6 +105,8 @@ function TaskDetailModal({
   onClose: () => void;
   onSaved: (task: Task) => void;
 }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -284,13 +287,15 @@ function TaskDetailModal({
             </div>
             {error && <div className="form-error">{error}</div>}
             <div className="modal-footer">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="btn-danger mr-auto"
-              >
-                Delete
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="btn-danger mr-auto"
+                >
+                  Delete
+                </button>
+              )}
               <button type="button" onClick={onClose} className="btn-ghost">
                 Cancel
               </button>

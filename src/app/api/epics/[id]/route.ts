@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { updateEpic, deleteEpic, getTasks } from "@/lib/data";
+import { auth } from "@/auth";
 
 export async function PATCH(
   req: NextRequest,
@@ -25,6 +26,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (session?.user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { id } = await params;
     const tasks = (await getTasks()).filter(t => t.epic === id);
     if (tasks.length > 0) {

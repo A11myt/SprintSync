@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 async function generateInvite(): Promise<string | null> {
   const res = await fetch("/api/invites", { method: "POST" });
@@ -22,6 +22,8 @@ const nav = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [sidebarOpen, setSidebarOpen]   = useState(false);
   const [inviteLink, setInviteLink]     = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
@@ -117,15 +119,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </ul>
 
         <div className="p-2 border-t border-secondary flex flex-col gap-0.5">
-          <button
-            onClick={handleInvite}
-            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm
-                       font-mono text-2xs text-muted hover:text-ink hover:bg-accent
-                       transition-all duration-100 cursor-pointer bg-transparent border-0"
-          >
-            <span className="text-xs w-4 text-center text-dim">✉</span>
-            {inviteCopied ? "Link copied!" : "Invite user"}
-          </button>
+          {isAdmin && (
+            <button
+              onClick={handleInvite}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm
+                         font-mono text-2xs text-muted hover:text-ink hover:bg-accent
+                         transition-all duration-100 cursor-pointer bg-transparent border-0"
+            >
+              <span className="text-xs w-4 text-center text-dim">✉</span>
+              {inviteCopied ? "Link copied!" : "Invite user"}
+            </button>
+          )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm

@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getTask, updateTask, deleteTask } from "@/lib/data";
+import { auth } from "@/auth";
 
 export async function GET(
   _req: NextRequest,
@@ -40,6 +41,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth();
+    if (session?.user.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { id } = await params;
     await deleteTask(id);
     return new NextResponse(null, { status: 204 });

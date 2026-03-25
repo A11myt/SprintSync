@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import type { Task, Sprint, Epic } from "@/lib/data";
 
 interface Props {
@@ -27,6 +28,8 @@ function TaskDetailModal({
   onClose: () => void;
   onSaved: (task: Task) => void;
 }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
