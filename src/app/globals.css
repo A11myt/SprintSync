@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets ──────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    @apply bg-background text-ink font-mono antialiased;
+    font-size: 12px;
+  }
+
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-divider rounded-none; }
+
+  :focus-visible { @apply outline outline-1 outline-primary outline-offset-2; }
+
+  a { @apply text-primary no-underline; }
+  a:hover { @apply opacity-70; }
+}
+
+/* ── Component layer – reusable patterns ─────────────────────── */
+@layer components {
+
+  /* Buttons */
+  .btn {
+    @apply inline-flex items-center gap-1.5
+           font-mono text-2xs tracking-wide
+           px-3 py-1.5 rounded-sm border-0
+           cursor-pointer transition-all duration-150
+           select-none whitespace-nowrap;
+  }
+  .btn:active { @apply scale-95; }
+
+  .btn-primary {
+    @apply btn bg-primary text-white;
+  }
+  .btn-primary:hover { @apply opacity-[85%]; }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-muted border border-secondary;
+  }
+  .btn-ghost:hover { @apply text-ink border-outline bg-overlay; }
+
+  .btn-danger {
+    @apply btn bg-transparent text-error border border-error/20;
+  }
+  .btn-danger:hover { @apply bg-error/[8%]; }
+
+  /* Section label */
+  .label {
+    @apply font-mono text-2xs tracking-[0.18em] uppercase text-muted;
+  }
+
+  /* Status / phase badges */
+  .badge {
+    @apply font-mono text-2xs tracking-[0.12em] uppercase
+           px-1.5 py-0.5 rounded-sm border;
+  }
+  .badge-backlog     { @apply bg-[#1a1a22] border-[#2a2a38] text-[#666680]; }
+  .badge-todo        { @apply bg-[#141e2e] border-[#1e2e44] text-[#5a7aaa]; }
+  .badge-in-progress { @apply bg-[#1a1428] border-[#2a1e40] text-[#8a6acc]; }
+  .badge-review      { @apply bg-[#201e0e] border-[#302e14] text-[#a89430]; }
+  .badge-done        { @apply bg-[#0e1e16] border-[#143020] text-[#4a9870]; }
+  .badge-planned     { @apply bg-[#141e2e] border-[#1e2e44] text-[#5a7aaa]; }
+  .badge-active      { @apply bg-[#1a1428] border-[#2a1e40] text-[#8a6acc]; }
+  .badge-closed      { @apply bg-[#0e1e16] border-[#143020] text-[#4a9870]; }
+
+  /* Priority dots */
+  .prio {
+    @apply inline-block w-1.5 h-1.5 rounded-full shrink-0;
+  }
+  .prio-low     { @apply bg-dim; }
+  .prio-medium  { @apply bg-info; }
+  .prio-high    { @apply bg-orange; }
+  .prio-urgent  { @apply bg-error shadow-[0_0_4px_theme(colors.error)]; }
+
+  /* Form fields */
+  .field {
+    @apply flex flex-col flex-1;
+  }
+  .field-label {
+    @apply label mb-1 block;
+  }
+  .field-input {
+    @apply w-full bg-overlay border border-secondary rounded-sm
+           font-mono text-base text-ink
+           px-2.5 py-2 outline-none
+           transition-colors duration-150
+           placeholder:text-dim;
+  }
+  .field-input:focus { @apply border-primary; }
+
+  /* Progress bar */
+  .progress-track {
+    @apply h-[2px] bg-outline rounded-none overflow-hidden flex-1;
+  }
+  .progress-fill {
+    @apply h-full bg-primary rounded-none transition-all duration-500;
+  }
+
+  /* Card base */
+  .card {
+    @apply bg-surface border border-primary/30 rounded-sm
+           animate-card-in;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/75 backdrop-blur-sm
+           flex items-center justify-center z-50;
+  }
+  .modal {
+    @apply bg-surface border border-secondary rounded-sm
+           p-5 w-[min(480px,95vw)]
+           max-h-[90dvh] overflow-y-auto
+           shadow-[0_24px_64px_rgba(0,0,0,0.7)]
+           animate-modal-in;
+  }
+  .modal-header {
+    @apply flex items-center justify-between
+           mb-4 pb-3 border-b border-secondary;
+  }
+  .modal-footer {
+    @apply flex gap-2 justify-end
+           mt-4 pt-3 border-t border-secondary;
+  }
+
+  /* Utility: hide scrollbar but keep scrolling */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  /* Form error */
+  .form-error {
+    @apply text-2xs text-error mt-2 px-2.5 py-1.5
+           bg-error/[7%] border-l-2 border-error rounded-none;
+  }
+}
