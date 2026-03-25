@@ -6,6 +6,7 @@ import type { Sprint, Task } from "@/lib/data";
 interface Props {
   initialSprints: Sprint[];
   tasks: Task[];
+  users: string[];
 }
 
 function daysLeft(endDate: string) {
@@ -100,7 +101,7 @@ function NewSprintModal({
 
 // ─── Main Sprints Client ───────────────────────────────────────
 
-export default function SprintsClient({ initialSprints, tasks }: Props) {
+export default function SprintsClient({ initialSprints, tasks, users: _users }: Props) {
   const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
   const [showNew, setShowNew] = useState(false);
 
@@ -193,6 +194,9 @@ export default function SprintsClient({ initialSprints, tasks }: Props) {
                   </div>
                   {sprint.goal && (
                     <div className="text-xs text-muted italic">"{sprint.goal}"</div>
+                  )}
+                  {sprint.createdBy && (
+                    <div className="text-2xs text-dim mt-1">by {sprint.createdBy}</div>
                   )}
                 </div>
                 <div className="text-right shrink-0 ml-4">

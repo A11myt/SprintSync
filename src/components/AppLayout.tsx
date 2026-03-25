@@ -5,6 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 
+async function generateInvite(): Promise<string | null> {
+  const res = await fetch("/api/invites", { method: "POST" });
+  if (!res.ok) return null;
+  const { token } = await res.json();
+  return `${window.location.origin}/invite/${token}`;
+}
+
 const nav = [
   { href: "/",        label: "Dashboard", icon: "◈" },
   { href: "/board",   label: "Board",     icon: "⊞" },
@@ -15,7 +22,18 @@ const nav = [
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen]   = useState(false);
+  const [inviteLink, setInviteLink]     = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  const handleInvite = async () => {
+    const link = await generateInvite();
+    if (!link) return;
+    setInviteLink(link);
+    await navigator.clipboard.writeText(link);
+    setInviteCopied(true);
+    setTimeout(() => setInviteCopied(false), 2500);
+  };
 
   const openSidebar  = () => setSidebarOpen(true);
   const closeSidebar = () => setSidebarOpen(false);
@@ -99,6 +117,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </ul>
 
         <div className="p-2 border-t border-secondary flex flex-col gap-0.5">
+          <button
+            onClick={handleInvite}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm
+                       font-mono text-2xs text-muted hover:text-ink hover:bg-accent
+                       transition-all duration-100 cursor-pointer bg-transparent border-0"
+          >
+            <span className="text-xs w-4 text-center text-dim">✉</span>
+            {inviteCopied ? "Link copied!" : "Invite user"}
+          </button>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm

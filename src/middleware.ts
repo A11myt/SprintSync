@@ -19,6 +19,9 @@ export default auth(function middleware(req) {
   // Login page — always allow
   if (pathname === "/login") return NextResponse.next();
 
+  // Invite pages — always allow
+  if (pathname.startsWith("/invite/")) return NextResponse.next();
+
   // Setup page — allow (server component handles redirect if users exist)
   if (pathname === "/setup") return NextResponse.next();
 

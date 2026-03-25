@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getTasks, createTask } from "@/lib/data";
+import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,21 +27,23 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const body = await req.json();
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "title required" }, { status: 400 });
     }
     const task = await createTask({
-      title:    body.title.trim(),
-      status:   body.status   ?? "backlog",
-      priority: body.priority ?? "medium",
-      epic:     body.epic     ?? undefined,
-      sprint:   body.sprint   ?? undefined,
-      assignee: body.assignee ?? undefined,
-      tags:     body.tags     ?? [],
-      estimate: body.estimate ?? undefined,
-      due:      body.due      ?? undefined,
-      body:     body.body     ?? "",
+      title:     body.title.trim(),
+      status:    body.status   ?? "backlog",
+      priority:  body.priority ?? "medium",
+      epic:      body.epic     ?? undefined,
+      sprint:    body.sprint   ?? undefined,
+      assignee:  body.assignee ?? undefined,
+      createdBy: session?.user?.name ?? undefined,
+      tags:      body.tags     ?? [],
+      estimate:  body.estimate ?? undefined,
+      due:       body.due      ?? undefined,
+      body:      body.body     ?? "",
     });
     return NextResponse.json(task, { status: 201 });
   } catch (err: any) {

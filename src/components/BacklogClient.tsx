@@ -7,6 +7,7 @@ interface Props {
   initialTasks: Task[];
   sprints: Sprint[];
   epics: Epic[];
+  users: string[];
 }
 
 // ─── Task Detail Modal ─────────────────────────────────────────
@@ -15,12 +16,14 @@ function TaskDetailModal({
   taskId,
   sprints,
   epics,
+  users,
   onClose,
   onSaved,
 }: {
   taskId: string;
   sprints: Sprint[];
   epics: Epic[];
+  users: string[];
   onClose: () => void;
   onSaved: (task: Task) => void;
 }) {
@@ -160,6 +163,21 @@ function TaskDetailModal({
                 />
               </div>
             </div>
+            <div className="flex gap-2">
+              <div className="field flex-1">
+                <label className="field-label">Assignee</label>
+                <select name="assignee" defaultValue={task.assignee ?? ""} className="field-input">
+                  <option value="">— unassigned —</option>
+                  {users.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              {task.createdBy && (
+                <div className="field flex-1">
+                  <label className="field-label">Created by</label>
+                  <div className="field-input text-muted">{task.createdBy}</div>
+                </div>
+              )}
+            </div>
             <div className="field">
               <label className="field-label">Description</label>
               <textarea
@@ -186,10 +204,12 @@ function TaskDetailModal({
 
 function NewTaskModal({
   epics,
+  users,
   onClose,
   onCreated,
 }: {
   epics: Epic[];
+  users: string[];
   onClose: () => void;
   onCreated: (task: Task) => void;
 }) {
@@ -208,6 +228,7 @@ function NewTaskModal({
       tags:     [],
     };
     if (fd.get("epic"))     payload.epic     = fd.get("epic");
+    if (fd.get("assignee")) payload.assignee = fd.get("assignee");
     if (fd.get("estimate")) payload.estimate = Number(fd.get("estimate"));
     if (fd.get("due"))      payload.due      = fd.get("due");
 
@@ -285,6 +306,13 @@ function NewTaskModal({
                 {epics.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
               </select>
             </div>
+            <div className="field">
+              <label className="field-label">Assignee</label>
+              <select name="assignee" className="field-input">
+                <option value="">— unassigned —</option>
+                {users.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
           </div>
           {error && <div className="form-error">{error}</div>}
           <div className="modal-footer">
@@ -299,7 +327,7 @@ function NewTaskModal({
 
 // ─── Main Backlog Client ───────────────────────────────────────
 
-export default function BacklogClient({ initialTasks, sprints, epics }: Props) {
+export default function BacklogClient({ initialTasks, sprints, epics, users }: Props) {
   const [tasks, setTasks]         = useState<Task[]>(initialTasks);
   const [detailId, setDetailId]   = useState<string | null>(null);
   const [showNew, setShowNew]     = useState(false);
@@ -393,6 +421,7 @@ export default function BacklogClient({ initialTasks, sprints, epics }: Props) {
                 <th className="label text-left px-5 py-2 font-normal w-full">Title</th>
                 <th className="label text-left px-3 py-2 font-normal whitespace-nowrap">Prio</th>
                 <th className="label text-left px-3 py-2 font-normal whitespace-nowrap hidden sm:table-cell">Epic</th>
+                <th className="label text-left px-3 py-2 font-normal whitespace-nowrap hidden md:table-cell">Assignee</th>
                 <th className="label text-left px-3 py-2 font-normal whitespace-nowrap hidden md:table-cell">Points</th>
                 <th className="label text-left px-3 py-2 font-normal whitespace-nowrap hidden md:table-cell">Due</th>
                 <th className="px-3 py-2"></th>
@@ -422,6 +451,11 @@ export default function BacklogClient({ initialTasks, sprints, epics }: Props) {
                       ) : (
                         <span className="text-dim text-2xs">—</span>
                       )}
+                    </td>
+                    <td className="px-3 py-2.5 hidden md:table-cell">
+                      {task.assignee
+                        ? <span className="text-2xs text-muted">@{task.assignee}</span>
+                        : <span className="text-dim text-2xs">—</span>}
                     </td>
                     <td className="px-3 py-2.5 text-2xs text-muted hidden md:table-cell">
                       {task.estimate ? `${task.estimate}pt` : <span className="text-dim">—</span>}
@@ -457,6 +491,7 @@ export default function BacklogClient({ initialTasks, sprints, epics }: Props) {
           taskId={detailId}
           sprints={sprints}
           epics={epics}
+          users={users}
           onClose={() => setDetailId(null)}
           onSaved={handleTaskSaved}
         />
@@ -466,6 +501,7 @@ export default function BacklogClient({ initialTasks, sprints, epics }: Props) {
       {showNew && (
         <NewTaskModal
           epics={epics}
+          users={users}
           onClose={() => setShowNew(false)}
           onCreated={handleTaskCreated}
         />

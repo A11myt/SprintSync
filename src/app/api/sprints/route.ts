@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getSprints, createSprint } from "@/lib/data";
+import { auth } from "@/auth";
 
 export async function GET() {
   try {
@@ -16,6 +17,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
     const body = await req.json();
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "title required" }, { status: 400 });
@@ -26,6 +28,7 @@ export async function POST(req: NextRequest) {
       startDate: body.startDate ?? "",
       endDate:   body.endDate   ?? "",
       status:    body.status    ?? "planned",
+      createdBy: session?.user?.name ?? undefined,
     });
     return NextResponse.json(sprint, { status: 201 });
   } catch (err: any) {

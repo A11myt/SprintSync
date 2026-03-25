@@ -7,6 +7,7 @@ interface Props {
   initialTasks: Task[];
   sprints: Sprint[];
   epics: Epic[];
+  users: string[];
 }
 
 const COLUMNS = [
@@ -76,6 +77,11 @@ function TaskCard({
         {task.due && (
           <span className="text-[9px] text-orange ml-auto">{task.due.slice(5)}</span>
         )}
+        {task.assignee && (
+          <span className="text-[9px] text-dim ml-auto font-mono">
+            @{task.assignee}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -87,12 +93,14 @@ function TaskDetailModal({
   taskId,
   sprints,
   epics,
+  users,
   onClose,
   onSaved,
 }: {
   taskId: string;
   sprints: Sprint[];
   epics: Epic[];
+  users: string[];
   onClose: () => void;
   onSaved: (task: Task) => void;
 }) {
@@ -249,6 +257,21 @@ function TaskDetailModal({
                 />
               </div>
             </div>
+            <div className="flex gap-2">
+              <div className="field flex-1">
+                <label className="field-label">Assignee</label>
+                <select name="assignee" defaultValue={task.assignee ?? ""} className="field-input">
+                  <option value="">— unassigned —</option>
+                  {users.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              {task.createdBy && (
+                <div className="field flex-1">
+                  <label className="field-label">Created by</label>
+                  <div className="field-input text-muted">{task.createdBy}</div>
+                </div>
+              )}
+            </div>
             <div className="field">
               <label className="field-label">Description</label>
               <textarea
@@ -286,11 +309,13 @@ function TaskDetailModal({
 
 function NewTaskModal({
   epics,
+  users,
   defaultStatus,
   onClose,
   onCreated,
 }: {
   epics: Epic[];
+  users: string[];
   defaultStatus: string;
   onClose: () => void;
   onCreated: (task: Task) => void;
@@ -310,6 +335,7 @@ function NewTaskModal({
       tags:     [],
     };
     if (fd.get("epic"))     payload.epic     = fd.get("epic");
+    if (fd.get("assignee")) payload.assignee = fd.get("assignee");
     if (fd.get("estimate")) payload.estimate = Number(fd.get("estimate"));
     if (fd.get("due"))      payload.due      = fd.get("due");
 
@@ -396,6 +422,13 @@ function NewTaskModal({
               </select>
             </div>
             <div className="field">
+              <label className="field-label">Assignee</label>
+              <select name="assignee" className="field-input">
+                <option value="">— unassigned —</option>
+                {users.map(u => <option key={u} value={u}>{u}</option>)}
+              </select>
+            </div>
+            <div className="field">
               <label className="field-label">Due</label>
               <input type="date" name="due" className="field-input" />
             </div>
@@ -413,7 +446,7 @@ function NewTaskModal({
 
 // ─── Main Board Client ─────────────────────────────────────────
 
-export default function BoardClient({ initialTasks, sprints, epics }: Props) {
+export default function BoardClient({ initialTasks, sprints, epics, users }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [detailId, setDetailId]     = useState<string | null>(null);
   const [showNew, setShowNew]       = useState(false);
@@ -598,6 +631,7 @@ export default function BoardClient({ initialTasks, sprints, epics }: Props) {
           taskId={detailId}
           sprints={sprints}
           epics={epics}
+          users={users}
           onClose={() => setDetailId(null)}
           onSaved={handleTaskSaved}
         />
@@ -607,6 +641,7 @@ export default function BoardClient({ initialTasks, sprints, epics }: Props) {
       {showNew && (
         <NewTaskModal
           epics={epics}
+          users={users}
           defaultStatus="todo"
           onClose={() => setShowNew(false)}
           onCreated={handleTaskCreated}

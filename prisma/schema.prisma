@@ -32,8 +32,17 @@ model Sprint {
   startDate String   @default("")
   endDate   String   @default("")
   status    String   @default("planned")
+  createdBy String?
   tasks     Task[]
   createdAt DateTime @default(now())
+}
+
+model Invite {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
 }
 
 model Task {
@@ -46,6 +55,7 @@ model Task {
   sprintId  String?
   sprint    Sprint?   @relation(fields: [sprintId], references: [id])
   assignee  String?
+  createdBy String?
   tags      String[]
   estimate  Int?
   due       String?

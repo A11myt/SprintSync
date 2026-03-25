@@ -18,6 +18,7 @@ export interface Task {
   epic?:     string;
   sprint?:   string;
   assignee?: string;
+  createdBy?: string;
   tags:      string[];
   estimate?: number;
   due?:      string;
@@ -33,6 +34,7 @@ export interface Sprint {
   startDate: string;
   endDate:   string;
   status:    "planned" | "active" | "closed";
+  createdBy?: string;
   tasks:     string[];
 }
 
@@ -44,23 +46,31 @@ export interface Epic {
   status:      "active" | "done";
 }
 
+// ─── Users ────────────────────────────────────────────────────
+
+export async function getUsers(): Promise<string[]> {
+  const users = await db.user.findMany({ orderBy: { username: "asc" }, select: { username: true } });
+  return users.map(u => u.username);
+}
+
 // ─── Task helpers ─────────────────────────────────────────────
 
 export function toTask(row: any): Task {
   return {
-    id:       row.id,
-    title:    row.title,
-    status:   row.status as TaskStatus,
-    priority: row.priority as Priority,
-    epic:     row.epicId   ?? undefined,
-    sprint:   row.sprintId ?? undefined,
-    assignee: row.assignee ?? undefined,
-    tags:     row.tags ?? [],
-    estimate: row.estimate ?? undefined,
-    due:      row.due ?? undefined,
-    created:  row.createdAt.toISOString(),
-    updated:  row.updatedAt.toISOString(),
-    body:     row.body ?? "",
+    id:        row.id,
+    title:     row.title,
+    status:    row.status as TaskStatus,
+    priority:  row.priority as Priority,
+    epic:      row.epicId    ?? undefined,
+    sprint:    row.sprintId  ?? undefined,
+    assignee:  row.assignee  ?? undefined,
+    createdBy: row.createdBy ?? undefined,
+    tags:      row.tags ?? [],
+    estimate:  row.estimate ?? undefined,
+    due:       row.due ?? undefined,
+    created:   row.createdAt.toISOString(),
+    updated:   row.updatedAt.toISOString(),
+    body:      row.body ?? "",
   };
 }
 
@@ -72,6 +82,7 @@ export function toSprint(row: any): Sprint {
     startDate: row.startDate ?? "",
     endDate:   row.endDate ?? "",
     status:    row.status as Sprint["status"],
+    createdBy: row.createdBy ?? undefined,
     tasks:     (row.tasks ?? []).map((t: any) => t.id),
   };
 }
@@ -115,16 +126,17 @@ export async function createTask(
 ): Promise<Task> {
   const row = await db.task.create({
     data: {
-      title:    data.title,
-      status:   data.status,
-      priority: data.priority,
-      epicId:   data.epic    ?? null,
-      sprintId: data.sprint  ?? null,
-      assignee: data.assignee ?? null,
-      tags:     data.tags ?? [],
-      estimate: data.estimate ?? null,
-      due:      data.due ?? null,
-      body:     data.body ?? "",
+      title:     data.title,
+      status:    data.status,
+      priority:  data.priority,
+      epicId:    data.epic       ?? null,
+      sprintId:  data.sprint     ?? null,
+      assignee:  data.assignee   ?? null,
+      createdBy: data.createdBy  ?? null,
+      tags:      data.tags ?? [],
+      estimate:  data.estimate   ?? null,
+      due:       data.due        ?? null,
+      body:      data.body       ?? "",
     },
   });
   return toTask(row);
@@ -183,10 +195,11 @@ export async function createSprint(
     data: {
       id,
       title:     data.title,
-      goal:      data.goal ?? "",
+      goal:      data.goal      ?? "",
       startDate: data.startDate ?? "",
       endDate:   data.endDate   ?? "",
       status:    data.status    ?? "planned",
+      createdBy: data.createdBy ?? null,
     },
     include: { tasks: { where: { archived: false }, select: { id: true } } },
   });
