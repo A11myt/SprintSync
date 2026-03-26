@@ -4,10 +4,12 @@ import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
+const PUBLIC_API_PREFIXES = ["/api/auth", "/api/sync", "/api/users", "/api/invites/"];
+
 export default auth((req) => {
-  // authorized() callback in authConfig handles most cases.
-  // Here we only override: API routes return 401 instead of redirect.
-  if (!req.auth && req.nextUrl.pathname.startsWith("/api/")) {
+  const { pathname } = req.nextUrl;
+  if (!req.auth && pathname.startsWith("/api/")) {
+    if (PUBLIC_API_PREFIXES.some(p => pathname.startsWith(p))) return;
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 });
