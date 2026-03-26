@@ -4,9 +4,13 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getEpics, createEpic } from "@/lib/data";
+import { auth } from "@/auth";
 
 export async function GET() {
   try {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const epics = await getEpics();
     return NextResponse.json(epics);
   } catch (err: any) {
@@ -16,6 +20,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await req.json();
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "title required" }, { status: 400 });

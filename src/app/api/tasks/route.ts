@@ -8,6 +8,9 @@ import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     let tasks = await getTasks();
 
     const { searchParams } = req.nextUrl;
@@ -28,6 +31,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body = await req.json();
     if (!body.title?.trim()) {
       return NextResponse.json({ error: "title required" }, { status: 400 });

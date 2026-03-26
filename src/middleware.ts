@@ -28,6 +28,10 @@ export default auth(function middleware(req) {
   // All other routes require session
   const session = (req as any).auth;
   if (!session) {
+    // API routes → 401 JSON, pages → redirect to login
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
