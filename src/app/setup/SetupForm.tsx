@@ -30,7 +30,7 @@ export default function SetupForm() {
       return;
     }
 
-    const res = await fetch("/api/users", {
+    const res = await fetch("/api/setup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),

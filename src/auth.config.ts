@@ -13,7 +13,7 @@ const PUBLIC_PATHS = ["/login", "/setup"];
 const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/sync",
-  "/api/users",       // setup: first user creation
+  "/api/setup",       // first user creation (only when no users exist)
   "/api/invites/",    // invite acceptance (token in path)
   "/invite/",
 ];

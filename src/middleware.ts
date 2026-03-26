@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-const PUBLIC_API_PREFIXES = ["/api/auth", "/api/sync", "/api/users", "/api/invites/"];
+const PUBLIC_API_PREFIXES = ["/api/auth", "/api/sync", "/api/setup", "/api/invites/"];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
