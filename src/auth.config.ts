@@ -9,6 +9,9 @@ declare module "next-auth" {
   }
 }
 
+const PUBLIC_PATHS = ["/login", "/setup"];
+const PUBLIC_PREFIXES = ["/api/auth", "/api/sync", "/invite/"];
+
 // Edge-safe config: no Node.js modules, no DB calls.
 // Used by middleware; the full auth.ts adds the Credentials provider on top.
 export const authConfig: NextAuthConfig = {
@@ -17,6 +20,18 @@ export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
   providers: [],
   callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const { pathname } = nextUrl;
+
+      if (PUBLIC_PATHS.includes(pathname)) return true;
+      if (PUBLIC_PREFIXES.some(p => pathname.startsWith(p))) return true;
+
+      // API routes: pass through — middleware handler returns 401
+      if (pathname.startsWith("/api/")) return true;
+
+      // Pages: NextAuth redirects to /login if false
+      return !!auth;
+    },
     jwt({ token, user }) {
       if (user) {
         token.id   = user.id;
