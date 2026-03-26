@@ -10,7 +10,13 @@ declare module "next-auth" {
 }
 
 const PUBLIC_PATHS = ["/login", "/setup"];
-const PUBLIC_PREFIXES = ["/api/auth", "/api/sync", "/invite/"];
+const PUBLIC_PREFIXES = [
+  "/api/auth",
+  "/api/sync",
+  "/api/users",       // setup: first user creation
+  "/api/invites/",    // invite acceptance (token in path)
+  "/invite/",
+];
 
 // Edge-safe config: no Node.js modules, no DB calls.
 // Used by middleware; the full auth.ts adds the Credentials provider on top.
