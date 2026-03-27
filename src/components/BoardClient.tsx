@@ -469,7 +469,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
 
   const boardTasks = selectedSprint
     ? tasks.filter(t => t.sprint === selectedSprint)
-    : tasks.filter(t => t.status !== "backlog");
+    : tasks.filter(t => !!t.sprint);
 
   const filteredTasks = boardTasks.filter(t => {
     if (filterEpic     && t.epic     !== filterEpic)     return false;
