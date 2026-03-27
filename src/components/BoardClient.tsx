@@ -461,11 +461,14 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
   const [dragOver, setDragOver]     = useState<string | null>(null);
   const draggedId = useRef<string | null>(null);
 
-  const activeSprint = sprints.find(s => s.status === "active") ?? null;
-  const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
+  const defaultSprint = sprints.find(s => s.status === "active")?.id ?? "";
+  const [selectedSprint, setSelectedSprint] = useState(defaultSprint);
 
-  const boardTasks = activeSprint
-    ? tasks.filter(t => t.sprint === activeSprint.id)
+  const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
+  const activeSprint = sprints.find(s => s.id === selectedSprint) ?? null;
+
+  const boardTasks = selectedSprint
+    ? tasks.filter(t => t.sprint === selectedSprint)
     : tasks.filter(t => t.status !== "backlog");
 
   const filteredTasks = boardTasks.filter(t => {
@@ -513,19 +516,26 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
       <div className="flex items-center justify-between px-5 py-3
                       border-b border-secondary bg-surface shrink-0">
         <div className="flex items-baseline gap-3">
-          <h1 className="text-md font-semibold tracking-tight">
-            {activeSprint ? activeSprint.title : "Board"}
-          </h1>
+          <h1 className="text-md font-semibold tracking-tight">Board</h1>
           {activeSprint && (
             <span className="text-xs text-muted">
               {activeSprint.startDate} → {activeSprint.endDate}
             </span>
           )}
-          {!activeSprint && (
-            <span className="text-xs text-muted">No active sprint</span>
-          )}
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedSprint}
+            onChange={e => setSelectedSprint(e.target.value)}
+            className="field-input py-1 text-2xs w-40"
+          >
+            <option value="">All tasks</option>
+            {sprints.map(s => (
+              <option key={s.id} value={s.id}>
+                {s.title}{s.status === "active" ? " ●" : ""}
+              </option>
+            ))}
+          </select>
           <button className="btn-ghost" onClick={() => setShowNew(true)}>
             + Task
           </button>

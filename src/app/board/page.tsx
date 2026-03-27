@@ -4,6 +4,8 @@ import { getTasks, getSprints, getEpics, getUsers } from "@/lib/data";
 import AppLayout from "@/components/AppLayout";
 import BoardClient from "@/components/BoardClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function BoardPage() {
   const session = await auth();
   if (!session) redirect("/login");
