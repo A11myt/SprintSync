@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Sprint, Task } from "@/lib/data";
+import type { Sprint, Task, Epic } from "@/lib/data";
 
 interface Props {
   initialSprints: Sprint[];
-  tasks: Task[];
-  users: string[];
+  tasks:          Task[];
+  epics:          Epic[];
+  users:          string[];
 }
 
 function daysLeft(endDate: string) {
@@ -101,9 +102,20 @@ function NewSprintModal({
 
 // ─── Main Sprints Client ───────────────────────────────────────
 
-export default function SprintsClient({ initialSprints, tasks, users: _users }: Props) {
-  const [sprints, setSprints] = useState<Sprint[]>(initialSprints);
-  const [showNew, setShowNew] = useState(false);
+const STATUS_DOT: Record<string, string> = {
+  backlog:       "bg-dim",
+  todo:          "bg-info",
+  "in-progress": "bg-primary",
+  review:        "bg-warning",
+  done:          "bg-success",
+};
+
+export default function SprintsClient({ initialSprints, tasks, epics, users: _users }: Props) {
+  const [sprints, setSprints]     = useState<Sprint[]>(initialSprints);
+  const [showNew, setShowNew]     = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
 
   function sprintStats(sprintId: string) {
     const st   = tasks.filter(t => t.sprint === sprintId);
@@ -237,7 +249,7 @@ export default function SprintsClient({ initialSprints, tasks, users: _users }: 
               </div>
 
               {/* Actions */}
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-wrap">
                 {sprint.status === "planned" && (
                   <button
                     className="btn-ghost"
@@ -254,8 +266,63 @@ export default function SprintsClient({ initialSprints, tasks, users: _users }: 
                     Close Sprint
                   </button>
                 )}
-                <a href={`/board`} className="btn-ghost">Board →</a>
+                <a href="/board" className="btn-ghost">Board →</a>
+                {stats.total > 0 && (
+                  <button
+                    className="btn-ghost"
+                    onClick={() => setExpandedId(expandedId === sprint.id ? null : sprint.id)}
+                  >
+                    {expandedId === sprint.id ? "Hide Tasks" : `Tasks (${stats.total})`}
+                  </button>
+                )}
               </div>
+
+              {/* Expandable task list */}
+              {expandedId === sprint.id && (() => {
+                const sprintTasks = tasks.filter(t => t.sprint === sprint.id);
+                const groups: Record<string, Task[]> = {};
+                sprintTasks.forEach(t => {
+                  (groups[t.status] ??= []).push(t);
+                });
+                const order = ["in-progress", "review", "todo", "done", "backlog"];
+                return (
+                  <div className="mt-3 pt-3 border-t border-secondary">
+                    {order.filter(s => groups[s]?.length).map(status => (
+                      <div key={status} className="mb-3">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status] ?? "bg-dim"}`} />
+                          <span className="text-2xs text-muted uppercase tracking-[1px]">
+                            {status.replace("-", " ")}
+                          </span>
+                          <span className="text-2xs text-dim">{groups[status].length}</span>
+                        </div>
+                        <div className="flex flex-col gap-1 pl-3">
+                          {groups[status].map(t => {
+                            const epic = t.epic ? epicMap[t.epic] : null;
+                            return (
+                              <div key={t.id} className="flex items-center gap-2">
+                                <span className={`prio prio-${t.priority} shrink-0`} />
+                                <span className="text-2xs text-ink flex-1 truncate">{t.title}</span>
+                                {epic && (
+                                  <span
+                                    className="text-2xs shrink-0 px-1.5 py-0.5 rounded-[2px]"
+                                    style={{ color: epic.color, background: `${epic.color}22` }}
+                                  >
+                                    {epic.title}
+                                  </span>
+                                )}
+                                {t.assignee && (
+                                  <span className="text-2xs text-dim shrink-0">@{t.assignee}</span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import type { Epic, Task } from "@/lib/data";
+import type { Epic, Task, Sprint } from "@/lib/data";
 
 interface Props {
   initialEpics: Epic[];
-  tasks: Task[];
+  tasks:        Task[];
+  sprints:      Sprint[];
 }
 
 const PRESET_COLORS = [
@@ -162,10 +163,21 @@ function EpicModal({
 
 // ─── Main Epics Client ─────────────────────────────────────────
 
-export default function EpicsClient({ initialEpics, tasks }: Props) {
-  const [epics, setEpics]   = useState<Epic[]>(initialEpics);
-  const [showNew, setShowNew]           = useState(false);
-  const [editEpic, setEditEpic]         = useState<Epic | null>(null);
+const STATUS_LABEL: Record<string, string> = {
+  backlog:     "Backlog",
+  todo:        "To Do",
+  "in-progress": "In Progress",
+  review:      "Review",
+  done:        "Done",
+};
+
+export default function EpicsClient({ initialEpics, tasks, sprints }: Props) {
+  const [epics, setEpics]           = useState<Epic[]>(initialEpics);
+  const [showNew, setShowNew]       = useState(false);
+  const [editEpic, setEditEpic]     = useState<Epic | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const sprintMap = Object.fromEntries(sprints.map(s => [s.id, s]));
 
   function epicStats(epicId: string) {
     const et   = tasks.filter(t => t.epic === epicId);
@@ -293,9 +305,14 @@ export default function EpicsClient({ initialEpics, tasks }: Props) {
                       </div>
                     ))}
                     <div className="ml-auto flex gap-1.5 items-center">
-                      <a href={`/backlog?epic=${epic.id}`} className="btn-ghost py-1">
-                        Tasks →
-                      </a>
+                      {s.total > 0 && (
+                        <button
+                          className="btn-ghost py-1"
+                          onClick={() => setExpandedId(expandedId === epic.id ? null : epic.id)}
+                        >
+                          {expandedId === epic.id ? "Hide Tasks" : "Show Tasks"}
+                        </button>
+                      )}
                       <button
                         className="btn-ghost py-1"
                         onClick={() => setEditEpic(epic)}
@@ -310,6 +327,49 @@ export default function EpicsClient({ initialEpics, tasks }: Props) {
                       </button>
                     </div>
                   </div>
+
+                  {/* Expandable task list */}
+                  {expandedId === epic.id && (
+                    <div className="mt-3 pt-3 border-t border-secondary">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="label text-left pb-1.5 font-normal w-full">Task</th>
+                            <th className="label text-left pb-1.5 font-normal whitespace-nowrap hidden sm:table-cell px-2">Status</th>
+                            <th className="label text-left pb-1.5 font-normal whitespace-nowrap hidden md:table-cell px-2">Sprint</th>
+                            <th className="label text-left pb-1.5 font-normal whitespace-nowrap px-2">Prio</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tasks.filter(t => t.epic === epic.id).map(t => {
+                            const sprint = t.sprint ? sprintMap[t.sprint] : null;
+                            return (
+                              <tr key={t.id} className="border-t border-secondary">
+                                <td className="py-1.5 pr-2">
+                                  <span className="text-2xs text-ink">{t.title}</span>
+                                </td>
+                                <td className="py-1.5 px-2 hidden sm:table-cell">
+                                  <span className={`badge badge-${t.status === "done" ? "done" : t.status === "in-progress" ? "active" : "planned"} text-2xs`}>
+                                    {STATUS_LABEL[t.status] ?? t.status}
+                                  </span>
+                                </td>
+                                <td className="py-1.5 px-2 hidden md:table-cell">
+                                  {sprint ? (
+                                    <span className="text-2xs text-primary">{sprint.title}</span>
+                                  ) : (
+                                    <span className="text-2xs text-dim">—</span>
+                                  )}
+                                </td>
+                                <td className="py-1.5 px-2">
+                                  <span className={`prio prio-${t.priority}`} />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

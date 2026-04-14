@@ -354,6 +354,13 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
     setTasks(prev => [task, ...prev]);
   }, []);
 
+  // Global `n` shortcut + custom event from AppLayout
+  useEffect(() => {
+    const h = () => setShowNew(true);
+    window.addEventListener("vaultboard:new-task", h);
+    return () => window.removeEventListener("vaultboard:new-task", h);
+  }, []);
+
   const hasFilter = filterEpic || filterPriority;
 
   return (

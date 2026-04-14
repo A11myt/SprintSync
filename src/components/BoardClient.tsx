@@ -478,6 +478,13 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
     return true;
   });
 
+  // Global `n` shortcut from AppLayout
+  useEffect(() => {
+    const h = () => setShowNew(true);
+    window.addEventListener("vaultboard:new-task", h);
+    return () => window.removeEventListener("vaultboard:new-task", h);
+  }, []);
+
   const handleDragStart = useCallback((id: string) => {
     draggedId.current = id;
   }, []);
