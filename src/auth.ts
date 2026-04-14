@@ -1,10 +1,8 @@
-import NextAuth, { type DefaultSession } from "next-auth";
+import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import crypto from "crypto";
 import { db } from "@/lib/db";
 import { authConfig } from "@/auth.config";
-
-// Session type is extended in auth.config.ts
+import { verifyPassword } from "@/lib/auth-helpers";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -22,16 +20,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await db.user.findUnique({ where: { username } });
         if (!user) return null;
 
-        const hash = crypto
-          .pbkdf2Sync(password, user.passwordSalt, 100_000, 64, "sha512")
-          .toString("hex");
+        if (!verifyPassword(password, user.passwordSalt, user.passwordHash)) return null;
 
-        const match = crypto.timingSafeEqual(
-          Buffer.from(hash),
-          Buffer.from(user.passwordHash)
-        );
-
-        if (!match) return null;
         return { id: user.id, name: user.username, role: user.role };
       },
     }),

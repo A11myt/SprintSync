@@ -3,8 +3,8 @@
  * Blocked once any user exists in the database.
  */
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { hashPassword } from "@/lib/auth-helpers";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,11 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "username and password required" }, { status: 400 });
     }
 
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto
-      .pbkdf2Sync(password, salt, 100_000, 64, "sha512")
-      .toString("hex");
-
+    const { salt, hash } = hashPassword(password);
     const user = await db.user.create({
       data: { username, passwordHash: hash, passwordSalt: salt, role: "admin" },
     });

@@ -1,10 +1,10 @@
 /**
- * GET  /api/users  → List users (without hash/salt)
- * POST /api/users  → Create user with PBKDF2 password hashing
+ * GET  /api/users → List users (without hash/salt)
+ * POST /api/users → Create user (invite flow only — direct creation is unused)
  */
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { hashPassword } from "@/lib/auth-helpers";
 
 export async function GET() {
   try {
@@ -28,18 +28,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "username and password required" }, { status: 400 });
     }
 
-    // Check if username already exists
     const existing = await db.user.findUnique({ where: { username } });
     if (existing) {
       return NextResponse.json({ error: "Username already taken" }, { status: 409 });
     }
 
-    const salt = crypto.randomBytes(16).toString("hex");
-    const hash = crypto
-      .pbkdf2Sync(password, salt, 100_000, 64, "sha512")
-      .toString("hex");
-
-    // First user ever becomes admin
+    const { salt, hash } = hashPassword(password);
     const count = await db.user.count();
     const role  = count === 0 ? "admin" : "member";
 

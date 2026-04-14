@@ -1,10 +1,11 @@
 /**
- * GET  /api/invites/[token] → Validate token
- * POST /api/invites/[token] → Register user and consume token
+ * GET    /api/invites/[token] → Validate token (public)
+ * POST   /api/invites/[token] → Register user and consume token (public)
+ * DELETE /api/invites/[token] → Revoke invite (admin only)
  */
 import { NextRequest, NextResponse } from "next/server";
-import crypto from "node:crypto";
 import { db } from "@/lib/db";
+import { hashPassword, requireAdmin } from "@/lib/auth-helpers";
 
 export async function GET(
   _req: NextRequest,
@@ -44,10 +45,7 @@ export async function POST(
     return NextResponse.json({ error: "Username already taken" }, { status: 409 });
   }
 
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto
-    .pbkdf2Sync(password, salt, 100_000, 64, "sha512")
-    .toString("hex");
+  const { salt, hash } = hashPassword(password);
 
   const [user] = await db.$transaction([
     db.user.create({ data: { username, passwordHash: hash, passwordSalt: salt } }),
@@ -55,4 +53,21 @@ export async function POST(
   ]);
 
   return NextResponse.json({ id: user.id, username: user.username }, { status: 201 });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ token: string }> }
+) {
+  const guard = await requireAdmin();
+  if ("response" in guard) return guard.response;
+
+  const { token } = await params;
+
+  try {
+    await db.invite.delete({ where: { token } });
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Invite not found" }, { status: 404 });
+  }
 }
