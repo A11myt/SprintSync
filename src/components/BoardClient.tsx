@@ -111,6 +111,7 @@ function TaskDetailModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Load task on mount
   useEffect(() => {
@@ -165,6 +166,9 @@ function TaskDetailModal({
     onClose();
   };
 
+  const epicLabel  = task?.epic     ? epics.find(e => e.id === task.epic)?.title     ?? task.epic     : null;
+  const sprintLabel = task?.sprint  ? sprints.find(s => s.id === task.sprint)?.title ?? task.sprint   : null;
+
   return (
     <div
       className="modal-overlay"
@@ -172,7 +176,7 @@ function TaskDetailModal({
     >
       <div className="modal w-[min(560px,95vw)]">
         <div className="modal-header">
-          <span className="label">Edit Task</span>
+          <span className="label">{isEditing ? "Edit Task" : "Task"}</span>
           <button
             onClick={onClose}
             className="text-muted hover:text-ink text-sm cursor-pointer
@@ -186,7 +190,49 @@ function TaskDetailModal({
           <div className="py-8 text-center text-xs text-muted">Loading…</div>
         )}
 
-        {!loading && task && (
+        {/* ── View mode ── */}
+        {!loading && task && !isEditing && (
+          <div className="flex flex-col gap-3">
+            <div>
+              <div className="text-base font-medium leading-snug">{task.title}</div>
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+              <span><span className="text-dim">Status</span> {task.status}</span>
+              <span><span className="text-dim">Priority</span> {task.priority}</span>
+              {task.estimate && <span><span className="text-dim">Points</span> {task.estimate}</span>}
+              {task.due      && <span><span className="text-dim">Due</span> {task.due}</span>}
+              {task.assignee && <span><span className="text-dim">Assignee</span> @{task.assignee}</span>}
+              {epicLabel     && <span><span className="text-dim">Epic</span> {epicLabel}</span>}
+              {sprintLabel   && <span><span className="text-dim">Sprint</span> {sprintLabel}</span>}
+              {task.createdBy && <span><span className="text-dim">Created by</span> {task.createdBy}</span>}
+            </div>
+            {task.body && (
+              <div className="field-input font-mono text-xs leading-relaxed whitespace-pre-wrap min-h-[60px]">
+                {task.body}
+              </div>
+            )}
+            <div className="modal-footer">
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="btn-danger mr-auto"
+                >
+                  Delete
+                </button>
+              )}
+              <button type="button" onClick={onClose} className="btn-ghost">
+                Close
+              </button>
+              <button type="button" onClick={() => setIsEditing(true)} className="btn-primary">
+                Edit
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Edit mode ── */}
+        {!loading && task && isEditing && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3">
             <div className="field">
               <label className="field-label">Title</label>
@@ -296,7 +342,7 @@ function TaskDetailModal({
                   Delete
                 </button>
               )}
-              <button type="button" onClick={onClose} className="btn-ghost">
+              <button type="button" onClick={() => setIsEditing(false)} className="btn-ghost">
                 Cancel
               </button>
               <button type="submit" disabled={saving} className="btn-primary">
@@ -473,7 +519,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
     ? tasks.filter(t => !t.sprint && t.status !== "backlog")
     : selectedSprint
       ? tasks.filter(t => t.sprint === selectedSprint)
-      : tasks.filter(t => !!t.sprint);
+      : tasks.filter(t => t.status !== "backlog");
 
   const filteredTasks = boardTasks.filter(t => {
     if (filterEpic     && t.epic     !== filterEpic)     return false;
@@ -544,6 +590,16 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
                       bg-background shrink-0 overflow-x-auto scrollbar-none">
         <span className="text-2xs text-dim mr-1">Filter</span>
         <select
+          value={filterEpic}
+          onChange={e => setFilterEpic(e.target.value)}
+          className="field-input py-1 text-2xs w-32"
+        >
+          <option value="">All Epics</option>
+          {epics.map(e => (
+            <option key={e.id} value={e.id}>{e.title}</option>
+          ))}
+        </select>
+        <select
           value={selectedSprint}
           onChange={e => setSelectedSprint(e.target.value)}
           className="field-input py-1 text-2xs w-40"
@@ -554,23 +610,6 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
             <option key={s.id} value={s.id}>
               {s.title}{s.status === "active" ? " ●" : ""}
             </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          value={filterSearch}
-          onChange={e => setFilterSearch(e.target.value)}
-          placeholder="Search…"
-          className="field-input py-1 text-2xs w-36"
-        />
-        <select
-          value={filterEpic}
-          onChange={e => setFilterEpic(e.target.value)}
-          className="field-input py-1 text-2xs w-32"
-        >
-          <option value="">All Epics</option>
-          {epics.map(e => (
-            <option key={e.id} value={e.id}>{e.title}</option>
           ))}
         </select>
         <select
@@ -584,6 +623,13 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
           <option value="medium">Medium</option>
           <option value="low">Low</option>
         </select>
+        <input
+          type="text"
+          value={filterSearch}
+          onChange={e => setFilterSearch(e.target.value)}
+          placeholder="Search…"
+          className="field-input py-1 text-2xs w-36"
+        />
         {hasFilter && (
           <button
             className="btn-ghost py-1 text-2xs"
