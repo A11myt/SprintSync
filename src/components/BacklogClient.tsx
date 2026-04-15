@@ -1,206 +1,15 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import type { Task, Sprint, Epic } from "@/lib/data";
+import { usePersistentFilter } from "@/hooks/usePersistentFilter";
+import TaskDetailModal from "@/components/TaskDetailModal";
 
 interface Props {
   initialTasks: Task[];
   sprints: Sprint[];
   epics: Epic[];
   users: string[];
-}
-
-// ─── Task Detail Modal ─────────────────────────────────────────
-
-function TaskDetailModal({
-  taskId,
-  sprints,
-  epics,
-  users,
-  onClose,
-  onSaved,
-}: {
-  taskId: string;
-  sprints: Sprint[];
-  epics: Epic[];
-  users: string[];
-  onClose: () => void;
-  onSaved: (task: Task) => void;
-}) {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
-  const [task, setTask] = useState<Task | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch(`/api/tasks/${taskId}`)
-      .then(r => r.json())
-      .then(t => { setTask(t); setLoading(false); })
-      .catch(() => { setError("Failed to load"); setLoading(false); });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [taskId]);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!task) return;
-    setError("");
-
-    const fd = new FormData(e.currentTarget);
-    const payload: Record<string, any> = {
-      title:    (fd.get("title") as string).trim(),
-      status:   fd.get("status"),
-      priority: fd.get("priority"),
-      body:     fd.get("body") ?? "",
-      epic:     fd.get("epic")     || undefined,
-      sprint:   fd.get("sprint")   || undefined,
-      assignee: fd.get("assignee") || undefined,
-      due:      fd.get("due")      || undefined,
-      estimate: fd.get("estimate") ? Number(fd.get("estimate")) : undefined,
-    };
-
-    const res = await fetch(`/api/tasks/${taskId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const json = await res.json();
-      setError(json.error ?? "Failed to save");
-      return;
-    }
-
-    const saved = await res.json();
-    onSaved(saved);
-    onClose();
-  };
-
-  return (
-    <div
-      className="modal-overlay"
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="modal w-[min(560px,95vw)]">
-        <div className="modal-header">
-          <span className="label">Edit Task</span>
-          <button
-            onClick={onClose}
-            className="text-muted hover:text-ink text-sm cursor-pointer
-                       bg-transparent border-0 p-1 leading-none"
-          >
-            ✕
-          </button>
-        </div>
-
-        {loading && <div className="py-8 text-center text-xs text-muted">Loading…</div>}
-
-        {!loading && task && (
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-            <div className="field">
-              <label className="field-label">Title</label>
-              <input
-                type="text"
-                name="title"
-                defaultValue={task.title}
-                className="field-input"
-                required
-              />
-            </div>
-            <div className="flex gap-2">
-              <div className="field">
-                <label className="field-label">Status</label>
-                <select name="status" defaultValue={task.status} className="field-input">
-                  <option value="backlog">Backlog</option>
-                  <option value="todo">To Do</option>
-                  <option value="in-progress">In Progress</option>
-                  <option value="review">Review</option>
-                  <option value="done">Done</option>
-                </select>
-              </div>
-              <div className="field">
-                <label className="field-label">Priority</label>
-                <select name="priority" defaultValue={task.priority} className="field-input">
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </div>
-              <div className="field">
-                <label className="field-label">Points</label>
-                <input
-                  type="number"
-                  name="estimate"
-                  defaultValue={task.estimate ?? ""}
-                  className="field-input"
-                  placeholder="—"
-                  min="1"
-                  max="99"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <div className="field">
-                <label className="field-label">Epic</label>
-                <select name="epic" defaultValue={task.epic ?? ""} className="field-input">
-                  <option value="">— no epic —</option>
-                  {epics.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                </select>
-              </div>
-              <div className="field">
-                <label className="field-label">Sprint</label>
-                <select name="sprint" defaultValue={task.sprint ?? ""} className="field-input">
-                  <option value="">— no sprint —</option>
-                  {sprints.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
-                </select>
-              </div>
-              <div className="field">
-                <label className="field-label">Due</label>
-                <input
-                  type="date"
-                  name="due"
-                  defaultValue={task.due ?? ""}
-                  className="field-input"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <div className="field flex-1">
-                <label className="field-label">Assignee</label>
-                <select name="assignee" defaultValue={task.assignee ?? ""} className="field-input">
-                  <option value="">— unassigned —</option>
-                  {users.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-              </div>
-              {task.createdBy && (
-                <div className="field flex-1">
-                  <label className="field-label">Created by</label>
-                  <div className="field-input text-muted">{task.createdBy}</div>
-                </div>
-              )}
-            </div>
-            <div className="field">
-              <label className="field-label">Description</label>
-              <textarea
-                name="body"
-                rows={5}
-                defaultValue={task.body}
-                className="field-input resize-y font-mono text-xs leading-relaxed"
-                placeholder="Markdown supported…"
-              />
-            </div>
-            {error && <div className="form-error">{error}</div>}
-            <div className="modal-footer">
-              <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
-              <button type="submit" className="btn-primary">Save</button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ─── New Task Modal ────────────────────────────────────────────
@@ -224,7 +33,7 @@ function NewTaskModal({
     const title = (fd.get("title") as string).trim();
     if (!title) { setError("Please enter a title"); return; }
 
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       title,
       status:   "backlog",
       priority: fd.get("priority") ?? "medium",
@@ -235,12 +44,11 @@ function NewTaskModal({
     if (fd.get("estimate")) payload.estimate = Number(fd.get("estimate"));
     if (fd.get("due"))      payload.due      = fd.get("due");
 
-    const res = await fetch("/api/tasks", {
+    const res  = await fetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-
     const task = await res.json();
     if (!res.ok) { setError(task.error ?? "Error"); return; }
 
@@ -268,11 +76,8 @@ function NewTaskModal({
           <div className="field">
             <label className="field-label">Title *</label>
             <input
-              type="text"
-              name="title"
-              className="field-input"
-              placeholder="What needs to be done?"
-              autoFocus
+              type="text" name="title" className="field-input"
+              placeholder="What needs to be done?" autoFocus
             />
           </div>
           <div className="flex gap-2">
@@ -288,12 +93,8 @@ function NewTaskModal({
             <div className="field">
               <label className="field-label">Points</label>
               <input
-                type="number"
-                name="estimate"
-                className="field-input"
-                placeholder="—"
-                min="1"
-                max="99"
+                type="number" name="estimate" className="field-input"
+                placeholder="—" min="1" max="99"
               />
             </div>
             <div className="field">
@@ -330,27 +131,18 @@ function NewTaskModal({
 
 // ─── Main Backlog Client ───────────────────────────────────────
 
-function getCookie(name: string): string {
-  if (typeof document === "undefined") return "";
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : "";
-}
-
-function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
-}
-
 export default function BacklogClient({ initialTasks, sprints, epics, users }: Props) {
-  const [tasks, setTasks]         = useState<Task[]>(initialTasks);
-  const [detailId, setDetailId]   = useState<string | null>(null);
-  const [showNew, setShowNew]     = useState(false);
-  const [filterEpic, setFilterEpic]         = useState(() => getCookie("backlog_filterEpic"));
-  const [filterPriority, setFilterPriority] = useState(() => getCookie("backlog_filterPriority"));
+  const [tasks, setTasks]       = useState<Task[]>(initialTasks);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [showNew, setShowNew]   = useState(false);
+
+  const [filterEpic,     setFilterEpic]     = usePersistentFilter("backlog_filterEpic");
+  const [filterPriority, setFilterPriority] = usePersistentFilter("backlog_filterPriority");
 
   const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
 
   const filteredTasks = tasks.filter(t => {
-    if (t.status !== "backlog") return false;
+    if (t.status !== "backlog")                    return false;
     if (filterEpic     && t.epic     !== filterEpic)     return false;
     if (filterPriority && t.priority !== filterPriority) return false;
     return true;
@@ -364,7 +156,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
     setTasks(prev => [task, ...prev]);
   }, []);
 
-  // Global `n` shortcut + custom event from AppLayout
+  // Triggered by AppLayout's keyboard shortcut
   useEffect(() => {
     const h = () => setShowNew(true);
     window.addEventListener("vaultboard:new-task", h);
@@ -394,7 +186,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         <span className="text-2xs text-dim mr-1">Filter</span>
         <select
           value={filterEpic}
-          onChange={e => { setFilterEpic(e.target.value); setCookie("backlog_filterEpic", e.target.value); }}
+          onChange={e => setFilterEpic(e.target.value)}
           className="field-input py-1 text-2xs w-32"
         >
           <option value="">All Epics</option>
@@ -402,7 +194,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         </select>
         <select
           value={filterPriority}
-          onChange={e => { setFilterPriority(e.target.value); setCookie("backlog_filterPriority", e.target.value); }}
+          onChange={e => setFilterPriority(e.target.value)}
           className="field-input py-1 text-2xs w-28"
         >
           <option value="">All Priorities</option>
@@ -414,10 +206,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         {hasFilter && (
           <button
             className="btn-ghost py-1 text-2xs"
-            onClick={() => {
-              setFilterEpic(""); setCookie("backlog_filterEpic", "");
-              setFilterPriority(""); setCookie("backlog_filterPriority", "");
-            }}
+            onClick={() => { setFilterEpic(""); setFilterPriority(""); }}
           >
             ✕ Reset
           </button>
@@ -468,9 +257,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
                     </td>
                     <td className="px-3 py-2.5 hidden sm:table-cell">
                       {epic ? (
-                        <span className="text-2xs" style={{ color: epic.color }}>
-                          {epic.title}
-                        </span>
+                        <span className="text-2xs" style={{ color: epic.color }}>{epic.title}</span>
                       ) : (
                         <span className="text-dim text-2xs">—</span>
                       )}
@@ -507,7 +294,6 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         )}
       </div>
 
-      {/* Detail Modal */}
       {detailId && (
         <TaskDetailModal
           key={detailId}
@@ -520,7 +306,6 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         />
       )}
 
-      {/* New Task Modal */}
       {showNew && (
         <NewTaskModal
           epics={epics}

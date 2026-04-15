@@ -38,6 +38,24 @@ export interface Sprint {
   tasks:     string[];
 }
 
+export interface Comment {
+  id:      string;
+  taskId:  string;
+  author:  string;
+  body:    string;
+  created: string;
+}
+
+export interface Notification {
+  id:            string;
+  taskId:        string;
+  taskTitle:     string;
+  commentAuthor: string;
+  commentBody:   string;
+  read:          boolean;
+  created:       string;
+}
+
 export interface Epic {
   id:          string;
   title:       string;
@@ -166,6 +184,69 @@ export async function updateTask(
 
 export async function deleteTask(id: string): Promise<void> {
   await db.task.update({ where: { id }, data: { archived: true } });
+}
+
+// ─── Comments ─────────────────────────────────────────────────
+
+export async function getComments(taskId: string): Promise<Comment[]> {
+  const rows = await db.comment.findMany({
+    where:   { taskId },
+    orderBy: { createdAt: "asc" },
+  });
+  return rows.map(r => ({
+    id:      r.id,
+    taskId:  r.taskId,
+    author:  r.author,
+    body:    r.body,
+    created: r.createdAt.toISOString(),
+  }));
+}
+
+export async function createComment(
+  taskId: string,
+  author: string,
+  body:   string,
+): Promise<Comment> {
+  const row = await db.comment.create({
+    data: { taskId, author, body },
+  });
+  return {
+    id:      row.id,
+    taskId:  row.taskId,
+    author:  row.author,
+    body:    row.body,
+    created: row.createdAt.toISOString(),
+  };
+}
+
+// ─── Notifications ────────────────────────────────────────────
+
+function toNotification(r: any): Notification {
+  return {
+    id:            r.id,
+    taskId:        r.taskId,
+    taskTitle:     r.taskTitle,
+    commentAuthor: r.commentAuthor,
+    commentBody:   r.commentBody,
+    read:          r.read,
+    created:       r.createdAt.toISOString(),
+  };
+}
+
+export async function getNotifications(recipient: string): Promise<Notification[]> {
+  const rows = await db.notification.findMany({
+    where:   { recipient },
+    orderBy: { createdAt: "desc" },
+    take:    30,
+  });
+  return rows.map(toNotification);
+}
+
+export async function markNotificationsRead(recipient: string): Promise<void> {
+  await db.notification.updateMany({
+    where: { recipient, read: false },
+    data:  { read: true },
+  });
 }
 
 // ─── Sprints ──────────────────────────────────────────────────
