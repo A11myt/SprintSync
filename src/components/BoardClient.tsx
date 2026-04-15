@@ -465,11 +465,15 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
   const [selectedSprint, setSelectedSprint] = useState(defaultSprint);
 
   const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
-  const activeSprint = sprints.find(s => s.id === selectedSprint) ?? null;
+  const activeSprint = selectedSprint && selectedSprint !== "__none__"
+    ? sprints.find(s => s.id === selectedSprint) ?? null
+    : null;
 
-  const boardTasks = selectedSprint
-    ? tasks.filter(t => t.sprint === selectedSprint)
-    : tasks.filter(t => !!t.sprint);
+  const boardTasks = selectedSprint === "__none__"
+    ? tasks.filter(t => !t.sprint && t.status !== "backlog")
+    : selectedSprint
+      ? tasks.filter(t => t.sprint === selectedSprint)
+      : tasks.filter(t => !!t.sprint);
 
   const filteredTasks = boardTasks.filter(t => {
     if (filterEpic     && t.epic     !== filterEpic)     return false;
@@ -537,6 +541,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
             className="field-input py-1 text-2xs w-40"
           >
             <option value="">All tasks</option>
+            <option value="__none__">— Kein Sprint —</option>
             {sprints.map(s => (
               <option key={s.id} value={s.id}>
                 {s.title}{s.status === "active" ? " ●" : ""}
