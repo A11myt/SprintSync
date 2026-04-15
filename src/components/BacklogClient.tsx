@@ -364,7 +364,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
   const hasFilter = filterEpic || filterPriority;
 
   return (
-    <div className="flex flex-col md:h-screen md:overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3

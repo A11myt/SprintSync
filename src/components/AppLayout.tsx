@@ -140,7 +140,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [handleGlobalKey]);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
 
       {/* Mobile top bar */}
       <header className="md:hidden fixed top-0 inset-x-0 z-50 h-10
@@ -260,7 +260,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       {/* Main content */}
-      <main className="flex-1 min-w-0 flex flex-col pt-10 md:pt-0">
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden pt-10 md:pt-0">
         {children}
       </main>
 

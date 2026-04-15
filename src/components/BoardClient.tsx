@@ -521,7 +521,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
   const hasFilter = filterEpic || filterPriority || filterSearch;
 
   return (
-    <div className="flex flex-col md:h-screen md:overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
 
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3
@@ -534,30 +534,28 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedSprint}
-            onChange={e => setSelectedSprint(e.target.value)}
-            className="field-input py-1 text-2xs w-40"
-          >
-            <option value="">All tasks</option>
-            <option value="__none__">— Kein Sprint —</option>
-            {sprints.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.title}{s.status === "active" ? " ●" : ""}
-              </option>
-            ))}
-          </select>
-          <button className="btn-ghost" onClick={() => setShowNew(true)}>
-            + Task
-          </button>
-        </div>
+        <button className="btn-ghost" onClick={() => setShowNew(true)}>
+          + Task
+        </button>
       </div>
 
       {/* Filter Bar */}
       <div className="flex items-center gap-2 px-5 py-2 border-b border-secondary
                       bg-background shrink-0 overflow-x-auto scrollbar-none">
         <span className="text-2xs text-dim mr-1">Filter</span>
+        <select
+          value={selectedSprint}
+          onChange={e => setSelectedSprint(e.target.value)}
+          className="field-input py-1 text-2xs w-40"
+        >
+          <option value="">All tasks</option>
+          <option value="__none__">— Kein Sprint —</option>
+          {sprints.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.title}{s.status === "active" ? " ●" : ""}
+            </option>
+          ))}
+        </select>
         <input
           type="text"
           value={filterSearch}

@@ -216,7 +216,8 @@ export default function EpicsClient({ initialEpics, tasks, sprints }: Props) {
   }, []);
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl">
+    <div className="w-full flex-1 overflow-y-auto">
+    <div className="max-w-5xl mx-auto w-full p-4 sm:p-6">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-secondary">
@@ -393,6 +394,7 @@ export default function EpicsClient({ initialEpics, tasks, sprints }: Props) {
           onSaved={handleSaved}
         />
       )}
+    </div>
     </div>
   );
 }

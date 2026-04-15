@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import type { Sprint, Task, Epic } from "@/lib/data";
 
 interface Props {
@@ -12,6 +13,219 @@ interface Props {
 
 function daysLeft(endDate: string) {
   return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000);
+}
+
+// ─── Task Detail Modal ─────────────────────────────────────────
+
+function TaskDetailModal({
+  taskId,
+  sprints,
+  epics,
+  users,
+  onClose,
+  onSaved,
+}: {
+  taskId: string;
+  sprints: Sprint[];
+  epics: Epic[];
+  users: string[];
+  onClose: () => void;
+  onSaved: (task: Task) => void;
+}) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
+  const [task, setTask] = useState<Task | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/tasks/${taskId}`)
+      .then(r => r.json())
+      .then(t => { setTask(t); setLoading(false); })
+      .catch(() => { setError("Failed to load"); setLoading(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [taskId]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!task) return;
+    setSaving(true);
+    setError("");
+
+    const fd = new FormData(e.currentTarget);
+    const payload: Record<string, any> = {
+      title:    (fd.get("title") as string).trim(),
+      status:   fd.get("status"),
+      priority: fd.get("priority"),
+      body:     fd.get("body") ?? "",
+      epic:     fd.get("epic")     || undefined,
+      sprint:   fd.get("sprint")   || undefined,
+      assignee: fd.get("assignee") || undefined,
+      due:      fd.get("due")      || undefined,
+      estimate: fd.get("estimate") ? Number(fd.get("estimate")) : undefined,
+    };
+
+    const res = await fetch(`/api/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setSaving(false);
+    if (!res.ok) {
+      const json = await res.json();
+      setError(json.error ?? "Failed to save");
+      return;
+    }
+
+    const saved = await res.json();
+    onSaved(saved);
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this task?")) return;
+    await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    onSaved({ ...task!, status: "backlog" } as Task);
+    onClose();
+  };
+
+  return (
+    <div
+      className="modal-overlay"
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="modal w-[min(560px,95vw)]">
+        <div className="modal-header">
+          <span className="label">Edit Task</span>
+          <button
+            onClick={onClose}
+            className="text-muted hover:text-ink text-sm cursor-pointer
+                       bg-transparent border-0 p-1 leading-none"
+          >
+            ✕
+          </button>
+        </div>
+
+        {loading && <div className="py-8 text-center text-xs text-muted">Loading…</div>}
+
+        {!loading && task && (
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <div className="field">
+              <label className="field-label">Title</label>
+              <input
+                type="text"
+                name="title"
+                defaultValue={task.title}
+                className="field-input"
+                required
+              />
+            </div>
+            <div className="flex gap-2">
+              <div className="field">
+                <label className="field-label">Status</label>
+                <select name="status" defaultValue={task.status} className="field-input">
+                  <option value="backlog">Backlog</option>
+                  <option value="todo">To Do</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              <div className="field">
+                <label className="field-label">Priority</label>
+                <select name="priority" defaultValue={task.priority} className="field-input">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div className="field">
+                <label className="field-label">Points</label>
+                <input
+                  type="number"
+                  name="estimate"
+                  defaultValue={task.estimate ?? ""}
+                  className="field-input"
+                  placeholder="—"
+                  min="1"
+                  max="99"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="field">
+                <label className="field-label">Epic</label>
+                <select name="epic" defaultValue={task.epic ?? ""} className="field-input">
+                  <option value="">— no epic —</option>
+                  {epics.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="field-label">Sprint</label>
+                <select name="sprint" defaultValue={task.sprint ?? ""} className="field-input">
+                  <option value="">— no sprint —</option>
+                  {sprints.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label className="field-label">Due</label>
+                <input
+                  type="date"
+                  name="due"
+                  defaultValue={task.due ?? ""}
+                  className="field-input"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <div className="field flex-1">
+                <label className="field-label">Assignee</label>
+                <select name="assignee" defaultValue={task.assignee ?? ""} className="field-input">
+                  <option value="">— unassigned —</option>
+                  {users.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              {task.createdBy && (
+                <div className="field flex-1">
+                  <label className="field-label">Created by</label>
+                  <div className="field-input text-muted">{task.createdBy}</div>
+                </div>
+              )}
+            </div>
+            <div className="field">
+              <label className="field-label">Description</label>
+              <textarea
+                name="body"
+                rows={5}
+                defaultValue={task.body}
+                className="field-input resize-y font-mono text-xs leading-relaxed"
+                placeholder="Markdown supported…"
+              />
+            </div>
+            {error && <div className="form-error">{error}</div>}
+            <div className="modal-footer">
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="btn-danger mr-auto"
+                >
+                  Delete
+                </button>
+              )}
+              <button type="button" onClick={onClose} className="btn-ghost">Cancel</button>
+              <button type="submit" disabled={saving} className="btn-primary">
+                {saving ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── New Sprint Modal ──────────────────────────────────────────
@@ -110,10 +324,16 @@ const STATUS_DOT: Record<string, string> = {
   done:          "bg-success",
 };
 
-export default function SprintsClient({ initialSprints, tasks, epics, users: _users }: Props) {
-  const [sprints, setSprints]     = useState<Sprint[]>(initialSprints);
-  const [showNew, setShowNew]     = useState(false);
+export default function SprintsClient({ initialSprints, tasks: initialTasks, epics, users }: Props) {
+  const [sprints, setSprints]       = useState<Sprint[]>(initialSprints);
+  const [tasks, setTasks]           = useState<Task[]>(initialTasks);
+  const [showNew, setShowNew]       = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [detailId, setDetailId]     = useState<string | null>(null);
+
+  const handleTaskSaved = useCallback((updated: Task) => {
+    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+  }, []);
 
   const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
 
@@ -160,7 +380,8 @@ export default function SprintsClient({ initialSprints, tasks, epics, users: _us
   }, []);
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="w-full flex-1 overflow-y-auto">
+    <div className="max-w-5xl mx-auto w-full p-6">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-secondary">
@@ -314,6 +535,14 @@ export default function SprintsClient({ initialSprints, tasks, epics, users: _us
                                 {t.assignee && (
                                   <span className="text-2xs text-dim shrink-0">@{t.assignee}</span>
                                 )}
+                                <button
+                                  onClick={() => setDetailId(t.id)}
+                                  className="shrink-0 text-dim hover:text-primary text-[10px]
+                                             bg-transparent border-0 cursor-pointer p-0
+                                             transition-colors leading-none"
+                                >
+                                  ⤢
+                                </button>
                               </div>
                             );
                           })}
@@ -335,6 +564,20 @@ export default function SprintsClient({ initialSprints, tasks, epics, users: _us
           onCreated={handleCreated}
         />
       )}
+
+      {/* Task Detail Modal */}
+      {detailId && (
+        <TaskDetailModal
+          key={detailId}
+          taskId={detailId}
+          sprints={sprints}
+          epics={epics}
+          users={users}
+          onClose={() => setDetailId(null)}
+          onSaved={handleTaskSaved}
+        />
+      )}
+    </div>
     </div>
   );
 }

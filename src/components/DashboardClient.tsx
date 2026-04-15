@@ -200,8 +200,8 @@ export default function DashboardClient({
   const maxLoad         = workloadEntries[0]?.[1] ?? 1;
 
   return (
-    <>
-      <div className="p-6 max-w-5xl">
+    <div className="w-full flex-1 overflow-y-auto">
+      <div className="max-w-5xl mx-auto w-full p-6">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-5 pb-4 border-b border-divider">
@@ -389,6 +389,6 @@ export default function DashboardClient({
           onCreated={handleCreated}
         />
       )}
-    </>
+    </div>
   );
 }
