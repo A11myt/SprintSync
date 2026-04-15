@@ -76,9 +76,9 @@ export default function TaskDetailModal({
       priority: fd.get("priority"),
       body:     fd.get("body") ?? "",
       epic:     fd.get("epic")     || undefined,
-      sprint:   fd.get("sprint")   || undefined,
+      sprint:   selectedSprint     || undefined,
       assignee: fd.get("assignee") || undefined,
-      due:      fd.get("due")      || undefined,
+      due:      dueValue           || undefined,
       estimate: fd.get("estimate") ? Number(fd.get("estimate")) : undefined,
     };
 
@@ -104,6 +104,24 @@ export default function TaskDetailModal({
     await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
     onSaved({ ...task!, status: "backlog" } as Task);
     onClose();
+  };
+
+  const [selectedSprint, setSelectedSprint] = useState<string>("");
+  const [dueValue, setDueValue]             = useState<string>("");
+
+  useEffect(() => {
+    if (task) {
+      setSelectedSprint(task.sprint ?? "");
+      setDueValue(task.due ?? "");
+    }
+  }, [task]);
+
+  const handleSprintChange = (sprintId: string) => {
+    setSelectedSprint(sprintId);
+    if (sprintId) {
+      const sprint = sprints.find(s => s.id === sprintId);
+      if (sprint?.endDate) setDueValue(sprint.endDate);
+    }
   };
 
   const epicLabel   = task?.epic    ? epics.find(e => e.id === task.epic)?.title       ?? task.epic    : null;
@@ -248,14 +266,25 @@ export default function TaskDetailModal({
               </div>
               <div className="field">
                 <label className="field-label">Sprint</label>
-                <select name="sprint" defaultValue={task.sprint ?? ""} className="field-input">
+                <select
+                  name="sprint"
+                  value={selectedSprint}
+                  onChange={e => handleSprintChange(e.target.value)}
+                  className="field-input"
+                >
                   <option value="">— no sprint —</option>
                   {sprints.map(s => <option key={s.id} value={s.id}>{s.title}</option>)}
                 </select>
               </div>
               <div className="field">
                 <label className="field-label">Due</label>
-                <input type="date" name="due" defaultValue={task.due ?? ""} className="field-input" />
+                <input
+                  type="date"
+                  name="due"
+                  value={dueValue}
+                  onChange={e => setDueValue(e.target.value)}
+                  className="field-input"
+                />
               </div>
             </div>
             <div className="flex gap-2">
