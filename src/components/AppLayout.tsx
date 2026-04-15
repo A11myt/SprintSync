@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import CommandPalette from "@/components/CommandPalette";
-import type { Notification } from "@/lib/data";
 
 const nav = [
   { href: "/",        label: "Dashboard", icon: "◈" },
@@ -40,110 +39,40 @@ const SHORTCUTS = [
   { key: "n",    label: "New Task"    },
 ];
 
-// ─── Notification Bell ────────────────────────────────────────
+// ─── Notification Badge ────────────────────────────────────────
 
-function NotificationBell() {
-  const [items, setItems]     = useState<Notification[]>([]);
-  const [open, setOpen]       = useState(false);
-  const ref                   = useRef<HTMLDivElement>(null);
+function NotificationBadge() {
+  const [unread, setUnread] = useState(0);
 
-  const load = useCallback(() => {
-    fetch("/api/notifications")
-      .then(r => r.json())
-      .then(data => Array.isArray(data) && setItems(data))
-      .catch(() => {});
-  }, []);
-
-  // Initial load + poll every 30s
   useEffect(() => {
+    const load = () => {
+      fetch("/api/notifications")
+        .then(r => r.json())
+        .then(data => Array.isArray(data) && setUnread(data.filter((n: any) => !n.read).length))
+        .catch(() => {});
+    };
     load();
     const id = setInterval(load, 30_000);
     return () => clearInterval(id);
-  }, [load]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, [open]);
-
-  const unread = items.filter(n => !n.read).length;
-
-  const handleOpen = () => {
-    setOpen(v => !v);
-    if (!open && unread > 0) {
-      // Optimistically mark all read in UI
-      setItems(prev => prev.map(n => ({ ...n, read: true })));
-      fetch("/api/notifications", { method: "POST" }).catch(() => {});
-    }
-  };
+  }, []);
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={handleOpen}
-        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm
-                   font-mono text-2xs text-muted hover:text-ink hover:bg-accent
-                   transition-all duration-100 cursor-pointer bg-transparent border-0"
-      >
-        <span className="text-xs w-4 text-center text-dim">◫</span>
-        Notifications
-        {unread > 0 && (
-          <span className="ml-auto text-2xs bg-primary text-background
-                           px-1.5 rounded-full leading-tight font-bold">
-            {unread}
-          </span>
-        )}
-      </button>
-
-      {open && (
-        <div className="absolute bottom-full left-0 mb-1 w-72
-                        bg-surface border border-secondary rounded-sm shadow-xl z-50
-                        flex flex-col max-h-80 overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-secondary shrink-0">
-            <span className="label">Notifications</span>
-            <button
-              onClick={() => setOpen(false)}
-              className="text-muted hover:text-ink text-sm cursor-pointer
-                         bg-transparent border-0 p-0.5 leading-none"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="overflow-y-auto flex-1">
-            {items.length === 0 ? (
-              <p className="text-2xs text-dim text-center py-6">No notifications yet.</p>
-            ) : (
-              items.map(n => (
-                <div
-                  key={n.id}
-                  className={[
-                    "flex flex-col gap-0.5 px-3 py-2.5 border-b border-secondary",
-                    n.read ? "opacity-50" : "",
-                  ].join(" ")}
-                >
-                  <div className="flex items-baseline gap-1.5">
-                    {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-0.5" />}
-                    <span className="text-2xs font-medium text-ink truncate">{n.taskTitle}</span>
-                    <span className="text-[10px] text-dim ml-auto shrink-0">
-                      {new Date(n.created).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-muted leading-relaxed line-clamp-2">
-                    <span className="font-medium">@{n.commentAuthor}</span>{" "}
-                    {n.commentBody}
-                  </p>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+    <Link
+      href="/notifications"
+      className="relative flex items-center justify-center w-6 h-6
+                 text-muted hover:text-ink transition-colors"
+      title="Notifications"
+    >
+      <span className="text-sm leading-none">◫</span>
+      {unread > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px]
+                         bg-primary text-background rounded-full
+                         flex items-center justify-center
+                         text-[9px] font-bold leading-none px-0.5">
+          {unread > 9 ? "9+" : unread}
+        </span>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -283,13 +212,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="px-4 py-[18px] border-b border-secondary font-mono text-sm font-bold tracking-tight
                         flex items-center justify-between">
           <span>Vault<span className="text-primary">Board</span></span>
-          <button
-            onClick={closeSidebar}
-            className="md:hidden text-muted hover:text-ink bg-transparent border-0
-                       cursor-pointer p-0.5 leading-none text-xs"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <NotificationBadge />
+            <button
+              onClick={closeSidebar}
+              className="md:hidden text-muted hover:text-ink bg-transparent border-0
+                         cursor-pointer p-0.5 leading-none text-xs"
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <ul className="flex flex-col gap-0 p-2 flex-1 list-none overflow-y-auto m-0">
@@ -355,7 +287,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <kbd className="ml-auto text-2xs bg-background border border-secondary
                             px-1 rounded-[2px] leading-none py-0.5">?</kbd>
           </button>
-          <NotificationBell />
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full flex items-center gap-2 px-2 py-1.5 rounded-sm

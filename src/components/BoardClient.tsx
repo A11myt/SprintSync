@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import type { Task, Sprint, Epic } from "@/lib/data";
-import { getCookie, setCookie } from "@/lib/cookies";
+import { setCookie } from "@/lib/cookies";
 import { usePersistentFilter } from "@/hooks/usePersistentFilter";
 import TaskDetailModal from "@/components/TaskDetailModal";
 
@@ -11,6 +11,7 @@ interface Props {
   sprints: Sprint[];
   epics: Epic[];
   users: string[];
+  initialSprint?: string;
 }
 
 const COLUMNS = [
@@ -220,22 +221,16 @@ function NewTaskModal({
 
 // ─── Main Board Client ─────────────────────────────────────────
 
-export default function BoardClient({ initialTasks, sprints, epics, users }: Props) {
+export default function BoardClient({ initialTasks, sprints, epics, users, initialSprint }: Props) {
   const [tasks, setTasks]     = useState<Task[]>(initialTasks);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showNew, setShowNew]   = useState(false);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  // Sprint selection: lazy-initialise to the active sprint, then override with
-  // any stored cookie value after mount (must stay separate from usePersistentFilter
-  // because it needs a non-empty fallback that depends on props).
+  // Sprint selection: use server-provided cookie value, fall back to active sprint.
   const [selectedSprint, setSelectedSprint] = useState(
-    () => sprints.find(s => s.status === "active")?.id ?? ""
+    () => initialSprint || (sprints.find(s => s.status === "active")?.id ?? "")
   );
-  useEffect(() => {
-    const stored = getCookie("board_selectedSprint");
-    if (stored) setSelectedSprint(stored);
-  }, []);
 
   const [filterEpic,     setFilterEpic]     = usePersistentFilter("board_filterEpic");
   const [filterPriority, setFilterPriority] = usePersistentFilter("board_filterPriority");
