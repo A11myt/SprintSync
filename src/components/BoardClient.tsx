@@ -497,12 +497,22 @@ function NewTaskModal({
 
 // ─── Main Board Client ─────────────────────────────────────────
 
+function getCookie(name: string): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
 export default function BoardClient({ initialTasks, sprints, epics, users }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [detailId, setDetailId]     = useState<string | null>(null);
   const [showNew, setShowNew]       = useState(false);
-  const [filterEpic, setFilterEpic]         = useState("");
-  const [filterPriority, setFilterPriority] = useState("");
+  const [filterEpic, setFilterEpic]         = useState(() => getCookie("board_filterEpic"));
+  const [filterPriority, setFilterPriority] = useState(() => getCookie("board_filterPriority"));
   const [filterSearch, setFilterSearch]     = useState("");
   const [dragOver, setDragOver]     = useState<string | null>(null);
   const draggedId = useRef<string | null>(null);
@@ -591,7 +601,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
         <span className="text-2xs text-dim mr-1">Filter</span>
         <select
           value={filterEpic}
-          onChange={e => setFilterEpic(e.target.value)}
+          onChange={e => { setFilterEpic(e.target.value); setCookie("board_filterEpic", e.target.value); }}
           className="field-input py-1 text-2xs w-32"
         >
           <option value="">All Epics</option>
@@ -614,7 +624,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
         </select>
         <select
           value={filterPriority}
-          onChange={e => setFilterPriority(e.target.value)}
+          onChange={e => { setFilterPriority(e.target.value); setCookie("board_filterPriority", e.target.value); }}
           className="field-input py-1 text-2xs w-28"
         >
           <option value="">All Priorities</option>
@@ -633,7 +643,11 @@ export default function BoardClient({ initialTasks, sprints, epics, users }: Pro
         {hasFilter && (
           <button
             className="btn-ghost py-1 text-2xs"
-            onClick={() => { setFilterEpic(""); setFilterPriority(""); setFilterSearch(""); }}
+            onClick={() => {
+              setFilterEpic(""); setCookie("board_filterEpic", "");
+              setFilterPriority(""); setCookie("board_filterPriority", "");
+              setFilterSearch("");
+            }}
           >
             ✕ Reset
           </button>

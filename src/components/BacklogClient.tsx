@@ -330,12 +330,22 @@ function NewTaskModal({
 
 // ─── Main Backlog Client ───────────────────────────────────────
 
+function getCookie(name: string): string {
+  if (typeof document === "undefined") return "";
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : "";
+}
+
+function setCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
 export default function BacklogClient({ initialTasks, sprints, epics, users }: Props) {
   const [tasks, setTasks]         = useState<Task[]>(initialTasks);
   const [detailId, setDetailId]   = useState<string | null>(null);
   const [showNew, setShowNew]     = useState(false);
-  const [filterEpic, setFilterEpic]         = useState("");
-  const [filterPriority, setFilterPriority] = useState("");
+  const [filterEpic, setFilterEpic]         = useState(() => getCookie("backlog_filterEpic"));
+  const [filterPriority, setFilterPriority] = useState(() => getCookie("backlog_filterPriority"));
 
   const epicMap = Object.fromEntries(epics.map(e => [e.id, e]));
 
@@ -384,7 +394,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         <span className="text-2xs text-dim mr-1">Filter</span>
         <select
           value={filterEpic}
-          onChange={e => setFilterEpic(e.target.value)}
+          onChange={e => { setFilterEpic(e.target.value); setCookie("backlog_filterEpic", e.target.value); }}
           className="field-input py-1 text-2xs w-32"
         >
           <option value="">All Epics</option>
@@ -392,7 +402,7 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         </select>
         <select
           value={filterPriority}
-          onChange={e => setFilterPriority(e.target.value)}
+          onChange={e => { setFilterPriority(e.target.value); setCookie("backlog_filterPriority", e.target.value); }}
           className="field-input py-1 text-2xs w-28"
         >
           <option value="">All Priorities</option>
@@ -404,7 +414,10 @@ export default function BacklogClient({ initialTasks, sprints, epics, users }: P
         {hasFilter && (
           <button
             className="btn-ghost py-1 text-2xs"
-            onClick={() => { setFilterEpic(""); setFilterPriority(""); }}
+            onClick={() => {
+              setFilterEpic(""); setCookie("backlog_filterEpic", "");
+              setFilterPriority(""); setCookie("backlog_filterPriority", "");
+            }}
           >
             ✕ Reset
           </button>
