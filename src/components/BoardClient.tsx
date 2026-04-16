@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
-import type { Task, Sprint, Epic } from "@/lib/data";
+import type { Task, Sprint, Epic, BoardSettings } from "@/lib/data";
 import { setCookie } from "@/lib/cookies";
 import { usePersistentFilter } from "@/hooks/usePersistentFilter";
 import TaskDetailModal from "@/components/TaskDetailModal";
@@ -12,6 +12,7 @@ interface Props {
   epics: Epic[];
   users: string[];
   initialSprint?: string;
+  boardSettings?: BoardSettings;
 }
 
 const COLUMNS = [
@@ -28,11 +29,13 @@ function TaskCard({
   epicMap,
   onDragStart,
   onOpenDetail,
+  showStoryPoints,
 }: {
   task: Task;
   epicMap: Record<string, Epic>;
   onDragStart: (id: string, status: Task["status"]) => void;
   onOpenDetail: (id: string) => void;
+  showStoryPoints: boolean;
 }) {
   const epic = task.epic ? epicMap[task.epic] : null;
 
@@ -67,7 +70,7 @@ function TaskCard({
       )}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className={`prio prio-${task.priority}`} />
-        {task.estimate && (
+        {showStoryPoints && task.estimate != null && (
           <span className="text-[9px] text-muted bg-overlay border border-divider px-1 rounded-[1px]">
             {task.estimate}pt
           </span>
@@ -221,16 +224,22 @@ function NewTaskModal({
 
 // ─── Main Board Client ─────────────────────────────────────────
 
-export default function BoardClient({ initialTasks, sprints, epics, users, initialSprint }: Props) {
+export default function BoardClient({ initialTasks, sprints, epics, users, initialSprint, boardSettings }: Props) {
+  const showStoryPoints = boardSettings?.showStoryPoints ?? true;
+  const showComments    = boardSettings?.showComments    ?? true;
   const [tasks, setTasks]     = useState<Task[]>(initialTasks);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [showNew, setShowNew]   = useState(false);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  // Sprint selection: use server-provided cookie value, fall back to active sprint.
-  const [selectedSprint, setSelectedSprint] = useState(
-    () => initialSprint || (sprints.find(s => s.status === "active")?.id ?? "")
-  );
+  // Sprint selection: use server-provided cookie value if still open, fall back to active sprint.
+  const [selectedSprint, setSelectedSprint] = useState(() => {
+    if (initialSprint) {
+      const stored = sprints.find(s => s.id === initialSprint);
+      if (stored && stored.status !== "closed") return initialSprint;
+    }
+    return sprints.find(s => s.status === "active")?.id ?? "";
+  });
 
   const [filterEpic,     setFilterEpic]     = usePersistentFilter("board_filterEpic");
   const [filterPriority, setFilterPriority] = usePersistentFilter("board_filterPriority");
@@ -244,11 +253,13 @@ export default function BoardClient({ initialTasks, sprints, epics, users, initi
     ? sprints.find(s => s.id === selectedSprint) ?? null
     : null;
 
+  const closedSprintIds = new Set(sprints.filter(s => s.status === "closed").map(s => s.id));
+
   const boardTasks = selectedSprint === "__none__"
     ? tasks.filter(t => !t.sprint && t.status !== "backlog")
     : selectedSprint
       ? tasks.filter(t => t.sprint === selectedSprint)
-      : tasks.filter(t => t.status !== "backlog");
+      : tasks.filter(t => t.status !== "backlog" && (!t.sprint || !closedSprintIds.has(t.sprint)));
 
   const filteredTasks = boardTasks.filter(t => {
     if (filterEpic     && t.epic     !== filterEpic)     return false;
@@ -341,7 +352,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users, initi
         >
           <option value="">All tasks</option>
           <option value="__none__">— Kein Sprint —</option>
-          {sprints.map(s => (
+          {sprints.filter(s => s.status !== "closed").map(s => (
             <option key={s.id} value={s.id}>
               {s.title}{s.status === "active" ? " ●" : ""}
             </option>
@@ -416,6 +427,7 @@ export default function BoardClient({ initialTasks, sprints, epics, users, initi
                     epicMap={epicMap}
                     onDragStart={handleDragStart}
                     onOpenDetail={setDetailId}
+                    showStoryPoints={showStoryPoints}
                   />
                 ))}
                 {isOver && (
@@ -436,6 +448,8 @@ export default function BoardClient({ initialTasks, sprints, epics, users, initi
           users={users}
           onClose={() => setDetailId(null)}
           onSaved={handleTaskSaved}
+          showComments={showComments}
+          showStoryPoints={showStoryPoints}
         />
       )}
 

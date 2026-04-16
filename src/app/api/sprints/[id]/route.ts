@@ -2,7 +2,7 @@
  * PATCH /api/sprints/[id]  → Update sprint (activate / close)
  */
 import { NextRequest, NextResponse } from "next/server";
-import { getSprints, updateSprint, getTasks, updateTask } from "@/lib/data";
+import { getSprints, updateSprint, getTasks, updateTask, deleteTask } from "@/lib/data";
 
 export async function PATCH(
   req: NextRequest,
@@ -23,14 +23,18 @@ export async function PATCH(
       );
     }
 
-    // When closing: move open tasks back to backlog
+    // When closing: move open tasks back to backlog, archive done tasks
     if (patch.status === "closed" && moveOpenToBacklog) {
       const tasks = await getTasks();
-      await Promise.all(
-        tasks
-          .filter(t => t.sprint === id && t.status !== "done")
-          .map(t => updateTask(t.id, { status: "backlog", sprint: undefined }))
-      );
+      const sprintTasks = tasks.filter(t => t.sprint === id);
+      await Promise.all([
+        ...sprintTasks
+          .filter(t => t.status !== "done")
+          .map(t => updateTask(t.id, { status: "backlog", sprint: undefined })),
+        ...sprintTasks
+          .filter(t => t.status === "done")
+          .map(t => deleteTask(t.id)),
+      ]);
     }
 
     const sprint = await updateSprint(id, patch);

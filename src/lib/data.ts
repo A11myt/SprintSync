@@ -347,3 +347,39 @@ export async function updateEpic(
 export async function deleteEpic(id: string): Promise<void> {
   await db.epic.delete({ where: { id } });
 }
+
+// ─── Board Settings ───────────────────────────────────────────
+
+export interface BoardSettings {
+  showStoryPoints: boolean;
+  showComments:    boolean;
+}
+
+const BOARD_SETTINGS_KEY = "board";
+const BOARD_SETTINGS_DEFAULT: BoardSettings = {
+  showStoryPoints: true,
+  showComments:    true,
+};
+
+export async function getBoardSettings(): Promise<BoardSettings> {
+  const row = await db.setting.findUnique({ where: { key: BOARD_SETTINGS_KEY } });
+  if (!row) return { ...BOARD_SETTINGS_DEFAULT };
+  try {
+    return { ...BOARD_SETTINGS_DEFAULT, ...JSON.parse(row.value) };
+  } catch {
+    return { ...BOARD_SETTINGS_DEFAULT };
+  }
+}
+
+export async function updateBoardSettings(
+  patch: Partial<BoardSettings>
+): Promise<BoardSettings> {
+  const current = await getBoardSettings();
+  const next    = { ...current, ...patch };
+  await db.setting.upsert({
+    where:  { key: BOARD_SETTINGS_KEY },
+    create: { key: BOARD_SETTINGS_KEY, value: JSON.stringify(next) },
+    update: { value: JSON.stringify(next) },
+  });
+  return next;
+}

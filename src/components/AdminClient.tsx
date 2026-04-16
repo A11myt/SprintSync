@@ -19,10 +19,16 @@ interface Invite {
   expiresAt: string;
 }
 
+interface BoardSettings {
+  showStoryPoints: boolean;
+  showComments:    boolean;
+}
+
 interface Props {
   initialUsers: User[];
   initialInvites: Invite[];
   currentUserId: string;
+  initialBoardSettings: BoardSettings;
 }
 
 // ─── Password Reset Modal ──────────────────────────────────────
@@ -178,11 +184,32 @@ function InviteRow({
 
 // ─── Main AdminClient ──────────────────────────────────────────
 
-export default function AdminClient({ initialUsers, initialInvites, currentUserId }: Props) {
+export default function AdminClient({ initialUsers, initialInvites, currentUserId, initialBoardSettings }: Props) {
+  const [tab, setTab]             = useState<"users" | "board">("users");
   const [users, setUsers]         = useState<User[]>(initialUsers);
   const [invites, setInvites]     = useState<Invite[]>(initialInvites);
   const [pwUser, setPwUser]       = useState<User | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [boardSettings, setBoardSettings] = useState<BoardSettings>(initialBoardSettings);
+  const [boardSaving, setBoardSaving]     = useState(false);
+  const [boardSaved, setBoardSaved]       = useState(false);
+
+  const saveBoardSettings = useCallback(async (patch: Partial<BoardSettings>) => {
+    setBoardSaving(true);
+    setBoardSaved(false);
+    const next = { ...boardSettings, ...patch };
+    setBoardSettings(next);
+    const res = await fetch("/api/settings", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify(patch),
+    });
+    setBoardSaving(false);
+    if (res.ok) {
+      setBoardSaved(true);
+      setTimeout(() => setBoardSaved(false), 2000);
+    }
+  }, [boardSettings]);
 
   useEffect(() => {
     if (!inviteCopied) return;
@@ -255,11 +282,83 @@ export default function AdminClient({ initialUsers, initialInvites, currentUserI
     <div className="p-4 sm:p-6 max-w-4xl">
 
       <div className="flex items-center justify-between mb-5 pb-4 border-b border-secondary">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-md font-semibold tracking-tight">Admin</h1>
-          <span className="text-xs text-muted">User Management</span>
+        <h1 className="text-md font-semibold tracking-tight">Admin</h1>
+        <div className="flex gap-1">
+          {(["users", "board"] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={[
+                "px-3 py-1 rounded-sm font-mono text-2xs tracking-wide transition-all",
+                "bg-transparent border-0 cursor-pointer",
+                tab === t
+                  ? "bg-accent text-ink border border-outline"
+                  : "text-muted hover:text-ink hover:bg-accent",
+              ].join(" ")}
+            >
+              {t === "users" ? "Users" : "Board"}
+            </button>
+          ))}
         </div>
       </div>
+
+      {/* ── Board Settings tab ── */}
+      {tab === "board" && (
+        <section>
+          <div className="flex items-center justify-between mb-4">
+            <span className="label">Board Options</span>
+            {boardSaved && <span className="text-2xs text-success">Saved</span>}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            {([
+              {
+                key:   "showStoryPoints" as const,
+                label: "Story Points",
+                desc:  "Zeigt Story-Point-Badges auf Task-Karten und im Task-Detail an.",
+              },
+              {
+                key:   "showComments" as const,
+                label: "Comments / Messages",
+                desc:  "Zeigt den Kommentar-Bereich im Task-Detail an.",
+              },
+            ] as { key: keyof BoardSettings; label: string; desc: string }[]).map(({ key, label, desc }) => (
+              <div
+                key={key}
+                className="flex items-center justify-between gap-4
+                           bg-surface border border-secondary rounded-sm px-4 py-3"
+              >
+                <div>
+                  <div className="text-xs font-medium text-ink mb-0.5">{label}</div>
+                  <div className="text-2xs text-muted">{desc}</div>
+                </div>
+                <button
+                  role="switch"
+                  aria-checked={boardSettings[key]}
+                  disabled={boardSaving}
+                  onClick={() => saveBoardSettings({ [key]: !boardSettings[key] })}
+                  className={[
+                    "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full",
+                    "transition-colors duration-150 cursor-pointer border-0",
+                    boardSettings[key] ? "bg-primary" : "bg-outline",
+                    boardSaving ? "opacity-50 cursor-not-allowed" : "",
+                  ].join(" ")}
+                >
+                  <span
+                    className={[
+                      "inline-block h-3.5 w-3.5 rounded-full bg-background shadow transition-transform duration-150",
+                      boardSettings[key] ? "translate-x-[18px]" : "translate-x-[3px]",
+                    ].join(" ")}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Users tab ── */}
+      {tab === "users" && <>
 
       {/* Users */}
       <section className="mb-8">
@@ -357,6 +456,8 @@ export default function AdminClient({ initialUsers, initialInvites, currentUserI
           </div>
         )}
       </section>
+
+      </>}
 
       {pwUser && (
         <PasswordModal user={pwUser} onClose={() => setPwUser(null)} />

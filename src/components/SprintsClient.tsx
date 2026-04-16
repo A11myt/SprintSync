@@ -2,13 +2,14 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import type { Sprint, Task, Epic } from "@/lib/data";
+import type { Sprint, Task, Epic, BoardSettings } from "@/lib/data";
 
 interface Props {
   initialSprints: Sprint[];
   tasks:          Task[];
   epics:          Epic[];
   users:          string[];
+  boardSettings?: BoardSettings;
 }
 
 function daysLeft(endDate: string) {
@@ -24,6 +25,7 @@ function TaskDetailModal({
   users,
   onClose,
   onSaved,
+  showStoryPoints = true,
 }: {
   taskId: string;
   sprints: Sprint[];
@@ -31,6 +33,7 @@ function TaskDetailModal({
   users: string[];
   onClose: () => void;
   onSaved: (task: Task) => void;
+  showStoryPoints?: boolean;
 }) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
@@ -142,18 +145,20 @@ function TaskDetailModal({
                   <option value="urgent">Urgent</option>
                 </select>
               </div>
-              <div className="field">
-                <label className="field-label">Points</label>
-                <input
-                  type="number"
-                  name="estimate"
-                  defaultValue={task.estimate ?? ""}
-                  className="field-input"
-                  placeholder="—"
-                  min="1"
-                  max="99"
-                />
-              </div>
+              {showStoryPoints && (
+                <div className="field">
+                  <label className="field-label">Points</label>
+                  <input
+                    type="number"
+                    name="estimate"
+                    defaultValue={task.estimate ?? ""}
+                    className="field-input"
+                    placeholder="—"
+                    min="1"
+                    max="99"
+                  />
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <div className="field">
@@ -324,7 +329,120 @@ const STATUS_DOT: Record<string, string> = {
   done:          "bg-success",
 };
 
-export default function SprintsClient({ initialSprints, tasks: initialTasks, epics, users }: Props) {
+const STATUS_LABEL: Record<string, string> = {
+  backlog:       "Backlog",
+  todo:          "To Do",
+  "in-progress": "In Progress",
+  review:        "Review",
+  done:          "Done",
+};
+
+const PRIORITY_EMOJI: Record<string, string> = {
+  urgent: "🔴",
+  high:   "🟠",
+  medium: "🟡",
+  low:    "🔵",
+};
+
+function buildSprintMarkdown(sprint: Sprint, sprintTasks: Task[], epicMap: Record<string, Epic>): string {
+  const now    = new Date().toISOString().split("T")[0];
+  const total  = sprintTasks.length;
+  const done   = sprintTasks.filter(t => t.status === "done").length;
+  const points = sprintTasks.reduce((s, t) => s + (t.estimate ?? 0), 0);
+  const pct    = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const lines: string[] = [];
+
+  // YAML frontmatter
+  lines.push("---");
+  lines.push(`title: "${sprint.title}"`);
+  lines.push(`status: ${sprint.status}`);
+  if (sprint.goal)      lines.push(`goal: "${sprint.goal.replace(/"/g, '\\"')}"`);
+  if (sprint.startDate) lines.push(`start: ${sprint.startDate}`);
+  if (sprint.endDate)   lines.push(`end: ${sprint.endDate}`);
+  if (sprint.createdBy) lines.push(`created_by: ${sprint.createdBy}`);
+  lines.push(`exported: ${now}`);
+  lines.push(`tasks: ${total}`);
+  lines.push(`points: ${points}`);
+  lines.push(`completion: ${pct}%`);
+  lines.push("---");
+  lines.push("");
+
+  // Title
+  lines.push(`# ${sprint.title}`);
+  lines.push("");
+
+  if (sprint.goal) {
+    lines.push(`> ${sprint.goal}`);
+    lines.push("");
+  }
+
+  // Meta summary
+  const datePart = [sprint.startDate, sprint.endDate].filter(Boolean).join(" → ");
+  const meta = [
+    `**Status:** ${sprint.status}`,
+    datePart && `**Period:** ${datePart}`,
+    `**Tasks:** ${done}/${total} done`,
+    points > 0 && `**Points:** ${points}`,
+    `**Completion:** ${pct}%`,
+  ].filter(Boolean).join("  ·  ");
+  lines.push(meta);
+  lines.push("");
+  lines.push("---");
+  lines.push("");
+
+  // Tasks grouped by status
+  const order = ["in-progress", "review", "todo", "done", "backlog"];
+  const groups: Record<string, Task[]> = {};
+  sprintTasks.forEach(t => { (groups[t.status] ??= []).push(t); });
+
+  for (const status of order) {
+    const group = groups[status];
+    if (!group?.length) continue;
+
+    lines.push(`## ${STATUS_LABEL[status] ?? status}`);
+    lines.push("");
+
+    for (const task of group) {
+      const epic = task.epic ? epicMap[task.epic] : null;
+      lines.push(`### ${PRIORITY_EMOJI[task.priority] ?? "•"} ${task.title}`);
+      lines.push("");
+
+      const meta: string[] = [
+        `**Priority:** ${task.priority}`,
+        task.estimate != null && `**Estimate:** ${task.estimate} pts`,
+        task.assignee  && `**Assignee:** @${task.assignee}`,
+        epic           && `**Epic:** ${epic.title}`,
+        task.due       && `**Due:** ${task.due}`,
+        task.tags?.length && `**Tags:** ${task.tags.join(", ")}`,
+      ].filter(Boolean) as string[];
+
+      meta.forEach(m => lines.push(`- ${m}`));
+
+      if (task.body?.trim()) {
+        lines.push("");
+        lines.push(task.body.trim());
+      }
+      lines.push("");
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function downloadMarkdown(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export default function SprintsClient({ initialSprints, tasks: initialTasks, epics, users, boardSettings }: Props) {
+  const showComments    = boardSettings?.showComments    ?? true;
+  const showStoryPoints = boardSettings?.showStoryPoints ?? true;
   const [sprints, setSprints]       = useState<Sprint[]>(initialSprints);
   const [tasks, setTasks]           = useState<Task[]>(initialTasks);
   const [showNew, setShowNew]       = useState(false);
@@ -496,6 +614,18 @@ export default function SprintsClient({ initialSprints, tasks: initialTasks, epi
                     {expandedId === sprint.id ? "Hide Tasks" : `Tasks (${stats.total})`}
                   </button>
                 )}
+                <button
+                  className="btn-ghost"
+                  title="Download as Markdown (Notion / Obsidian)"
+                  onClick={() => {
+                    const sprintTasks = tasks.filter(t => t.sprint === sprint.id);
+                    const md = buildSprintMarkdown(sprint, sprintTasks, epicMap);
+                    const slug = sprint.title.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+                    downloadMarkdown(`${slug}.md`, md);
+                  }}
+                >
+                  ↓ MD
+                </button>
               </div>
 
               {/* Expandable task list */}
@@ -575,6 +705,7 @@ export default function SprintsClient({ initialSprints, tasks: initialTasks, epi
           users={users}
           onClose={() => setDetailId(null)}
           onSaved={handleTaskSaved}
+          showStoryPoints={showStoryPoints}
         />
       )}
     </div>

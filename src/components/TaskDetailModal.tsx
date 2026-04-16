@@ -11,6 +11,8 @@ interface Props {
   users: string[];
   onClose: () => void;
   onSaved: (task: Task) => void;
+  showComments?:    boolean;
+  showStoryPoints?: boolean;
 }
 
 export default function TaskDetailModal({
@@ -20,6 +22,8 @@ export default function TaskDetailModal({
   users,
   onClose,
   onSaved,
+  showComments    = true,
+  showStoryPoints = true,
 }: Props) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
@@ -155,7 +159,7 @@ export default function TaskDetailModal({
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
               <span><span className="text-dim">Status</span> {task.status}</span>
               <span><span className="text-dim">Priority</span> {task.priority}</span>
-              {task.estimate  && <span><span className="text-dim">Points</span> {task.estimate}</span>}
+              {showStoryPoints && task.estimate != null && <span><span className="text-dim">Points</span> {task.estimate}</span>}
               {task.due       && <span><span className="text-dim">Due</span> {task.due}</span>}
               {task.assignee  && <span><span className="text-dim">Assignee</span> @{task.assignee}</span>}
               {epicLabel      && <span><span className="text-dim">Epic</span> {epicLabel}</span>}
@@ -169,7 +173,7 @@ export default function TaskDetailModal({
             )}
 
             {/* Comments */}
-            <div className="flex flex-col gap-2 pt-1 border-t border-secondary">
+            {showComments && <div className="flex flex-col gap-2 pt-1 border-t border-secondary">
               <span className="label text-dim">
                 Comments{comments.length > 0 && ` · ${comments.length}`}
               </span>
@@ -207,7 +211,7 @@ export default function TaskDetailModal({
                   <span className="text-[10px] text-dim">⌘↵ to submit</span>
                 </div>
               </form>
-            </div>
+            </div>}
 
             <div className="modal-footer">
               {isAdmin && (
@@ -248,13 +252,15 @@ export default function TaskDetailModal({
                   <option value="urgent">Urgent</option>
                 </select>
               </div>
-              <div className="field">
-                <label className="field-label">Points</label>
-                <input
-                  type="number" name="estimate" defaultValue={task.estimate ?? ""}
-                  className="field-input" placeholder="—" min="1" max="99"
-                />
-              </div>
+              {showStoryPoints && (
+                <div className="field">
+                  <label className="field-label">Points</label>
+                  <input
+                    type="number" name="estimate" defaultValue={task.estimate ?? ""}
+                    className="field-input" placeholder="—" min="1" max="99"
+                  />
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <div className="field">

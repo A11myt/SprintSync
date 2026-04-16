@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { getTasks, getSprints, getEpics, getUsers } from "@/lib/data";
+import { getTasks, getSprints, getEpics, getUsers, getBoardSettings } from "@/lib/data";
 import AppLayout from "@/components/AppLayout";
 import BoardClient from "@/components/BoardClient";
 
@@ -14,11 +14,12 @@ export default async function BoardPage() {
   const cookieStore = await cookies();
   const storedSprint = cookieStore.get("board_selectedSprint")?.value ?? "";
 
-  const [tasks, sprints, epics, users] = await Promise.all([
+  const [tasks, sprints, epics, users, boardSettings] = await Promise.all([
     getTasks(),
     getSprints(),
     getEpics(),
     getUsers(),
+    getBoardSettings(),
   ]);
 
   return (
@@ -29,6 +30,7 @@ export default async function BoardPage() {
         epics={epics}
         users={users}
         initialSprint={storedSprint}
+        boardSettings={boardSettings}
       />
     </AppLayout>
   );
