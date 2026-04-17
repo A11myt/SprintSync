@@ -18,13 +18,25 @@ export async function PATCH(
   const { id } = await params;
   const body = await req.json();
 
-  const data: { role?: Role; passwordHash?: string; passwordSalt?: string } = {};
+  const data: { role?: Role; passwordHash?: string; passwordSalt?: string; permissions?: string[] } = {};
 
   if (body.role !== undefined) {
     if (body.role !== "admin" && body.role !== "member") {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
     data.role = body.role;
+  }
+
+  if (body.permissions !== undefined) {
+    if (!Array.isArray(body.permissions) || body.permissions.some((p: unknown) => typeof p !== "string")) {
+      return NextResponse.json({ error: "Invalid permissions" }, { status: 400 });
+    }
+    const allowed = ["canDelete"];
+    const invalid = body.permissions.filter((p: string) => !allowed.includes(p));
+    if (invalid.length > 0) {
+      return NextResponse.json({ error: `Unknown permissions: ${invalid.join(", ")}` }, { status: 400 });
+    }
+    data.permissions = body.permissions;
   }
 
   if (body.password !== undefined) {
@@ -44,7 +56,7 @@ export async function PATCH(
     const user = await db.user.update({
       where: { id },
       data,
-      select: { id: true, username: true, role: true, createdAt: true },
+      select: { id: true, username: true, role: true, permissions: true, createdAt: true },
     });
     return NextResponse.json(user);
   } catch (err) {

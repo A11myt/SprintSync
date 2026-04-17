@@ -3,8 +3,9 @@ import type { NextAuthConfig } from "next-auth";
 declare module "next-auth" {
   interface Session {
     user: {
-      id:   string;
-      role: string;
+      id:          string;
+      role:        string;
+      permissions: string[];
     } & import("next-auth").DefaultSession["user"];
   }
 }
@@ -40,14 +41,16 @@ export const authConfig: NextAuthConfig = {
     },
     jwt({ token, user }) {
       if (user) {
-        token.id   = user.id;
-        token.role = (user as any).role ?? "member";
+        token.id          = user.id;
+        token.role        = (user as any).role        ?? "member";
+        token.permissions = (user as any).permissions ?? [];
       }
       return token;
     },
     session({ session, token }) {
-      if (token.id)   session.user.id   = token.id   as string;
-      if (token.role) session.user.role = token.role as string;
+      if (token.id)          session.user.id          = token.id          as string;
+      if (token.role)        session.user.role        = token.role        as string;
+      session.user.permissions = (token.permissions as string[]) ?? [];
       return session;
     },
   },

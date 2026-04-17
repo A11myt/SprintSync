@@ -5,10 +5,11 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 type Role = "admin" | "member";
 
 interface User {
-  id: string;
-  username: string;
-  role: Role;
-  createdAt: string;
+  id:          string;
+  username:    string;
+  role:        Role;
+  permissions: string[];
+  createdAt:   string;
 }
 
 interface Invite {
@@ -246,6 +247,21 @@ export default function AdminClient({ initialUsers, initialInvites, currentUserI
     setUsers(prev => prev.map(u => u.id === updated.id ? { ...u, role: updated.role } : u));
   }, []);
 
+  const togglePermission = useCallback(async (user: User, permission: string) => {
+    const has  = user.permissions.includes(permission);
+    const next = has
+      ? user.permissions.filter(p => p !== permission)
+      : [...user.permissions, permission];
+    const res = await fetch(`/api/users/${user.id}`, {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ permissions: next }),
+    });
+    if (!res.ok) { alert("Failed to update permissions"); return; }
+    const updated = await res.json();
+    setUsers(prev => prev.map(u => u.id === updated.id ? { ...u, permissions: updated.permissions } : u));
+  }, []);
+
   const deleteUser = useCallback(async (user: User) => {
     if (!confirm(`Delete user "${user.username}"? This cannot be undone.`)) return;
     const res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
@@ -372,6 +388,7 @@ export default function AdminClient({ initialUsers, initialInvites, currentUserI
               <tr className="border-b border-secondary bg-surface">
                 <th className="label text-left px-4 py-2 font-normal">Username</th>
                 <th className="label text-left px-4 py-2 font-normal">Role</th>
+                <th className="label text-left px-4 py-2 font-normal hidden md:table-cell">Permissions</th>
                 <th className="label text-left px-4 py-2 font-normal hidden sm:table-cell">Joined</th>
                 <th className="px-4 py-2 text-right"></th>
               </tr>
@@ -394,6 +411,26 @@ export default function AdminClient({ initialUsers, initialInvites, currentUserI
                       <span className={`badge ${user.role === "admin" ? "badge-active" : "badge-done"}`}>
                         {user.role}
                       </span>
+                    </td>
+                    <td className="px-4 py-2.5 hidden md:table-cell">
+                      {user.role !== "admin" ? (
+                        <button
+                          onClick={() => togglePermission(user, "canDelete")}
+                          title="Kann Tasks archivieren/löschen"
+                          className={[
+                            "inline-flex items-center gap-1 px-2 py-0.5 rounded-sm text-2xs",
+                            "border transition-colors cursor-pointer",
+                            user.permissions.includes("canDelete")
+                              ? "bg-primary/10 border-primary/40 text-primary"
+                              : "bg-transparent border-outline text-muted hover:border-ink hover:text-ink",
+                          ].join(" ")}
+                        >
+                          <span>{user.permissions.includes("canDelete") ? "✓" : "+"}</span>
+                          <span>canDelete</span>
+                        </button>
+                      ) : (
+                        <span className="text-2xs text-dim">all</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell">
                       <span className="text-2xs text-muted">

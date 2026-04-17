@@ -26,7 +26,8 @@ export default function TaskDetailModal({
   showStoryPoints = true,
 }: Props) {
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "admin";
+  const isAdmin     = session?.user?.role === "admin";
+  const canDelete   = isAdmin || (session?.user?.permissions ?? []).includes("canDelete");
   const [task, setTask]       = useState<Task | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState("");
@@ -214,7 +215,7 @@ export default function TaskDetailModal({
             </div>}
 
             <div className="modal-footer">
-              {isAdmin && (
+              {canDelete && (
                 <button type="button" onClick={handleDelete} className="btn-danger mr-auto">
                   Delete
                 </button>
@@ -318,7 +319,7 @@ export default function TaskDetailModal({
             </div>
             {error && <div className="form-error">{error}</div>}
             <div className="modal-footer">
-              {isAdmin && (
+              {canDelete && (
                 <button type="button" onClick={handleDelete} className="btn-danger mr-auto">
                   Delete
                 </button>

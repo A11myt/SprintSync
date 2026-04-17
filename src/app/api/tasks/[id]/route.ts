@@ -48,9 +48,16 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (session?.user.role !== "admin") {
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const canDelete =
+      session.user.role === "admin" ||
+      session.user.permissions?.includes("canDelete");
+
+    if (!canDelete) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
     const { id } = await params;
     await deleteTask(id);
     return new NextResponse(null, { status: 204 });

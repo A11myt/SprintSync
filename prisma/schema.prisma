@@ -14,6 +14,7 @@ model User {
   passwordHash String
   passwordSalt String
   role         String   @default("member")
+  permissions  String[] @default([])
   createdAt    DateTime @default(now())
 }
 

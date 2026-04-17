@@ -13,7 +13,7 @@ export default async function AdminPage() {
   const [users, invites, boardSettings] = await Promise.all([
     db.user.findMany({
       orderBy: { createdAt: "asc" },
-      select: { id: true, username: true, role: true, createdAt: true },
+      select: { id: true, username: true, role: true, permissions: true, createdAt: true },
     }),
     db.invite.findMany({
       orderBy: { createdAt: "desc" },
@@ -25,7 +25,7 @@ export default async function AdminPage() {
   return (
     <AppLayout>
       <AdminClient
-        initialUsers={users.map(u => ({ ...u, role: u.role as "admin" | "member", createdAt: u.createdAt.toISOString() }))}
+        initialUsers={users.map(u => ({ ...u, role: u.role as "admin" | "member", permissions: u.permissions, createdAt: u.createdAt.toISOString() }))}
         initialInvites={invites.map(i => ({
           id:        i.id,
           token:     i.token,
